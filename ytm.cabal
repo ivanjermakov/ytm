@@ -6,21 +6,20 @@ cabal-version: 1.12
 
 name:           ytm
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/ytm#readme>
-homepage:       https://github.com/githubuser/ytm#readme
-bug-reports:    https://github.com/githubuser/ytm/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2022 Author name here
-license:        BSD3
+description:    YouTube video manager TUI
+homepage:       https://github.com/ivanjermakov/ytm#readme
+bug-reports:    https://github.com/ivanjermakov/ytm/issues
+author:         ivanjermakov
+maintainer:     ivanjermakov
+copyright:      2022 ivanjermakov
+license:        MIT
 build-type:     Simple
 extra-source-files:
     README.md
-    ChangeLog.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/ytm
+  location: https://github.com/ivanjermakov/ytm
 
 library
   exposed-modules:
@@ -31,6 +30,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , brick
   default-language: Haskell2010
 
 executable ytm-exe
@@ -42,6 +42,7 @@ executable ytm-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , brick
     , ytm
   default-language: Haskell2010
 
@@ -55,5 +56,6 @@ test-suite ytm-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , brick
     , ytm
   default-language: Haskell2010
