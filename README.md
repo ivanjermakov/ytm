@@ -3,6 +3,7 @@
 ## Setup
 
 ### Obtaining `ACCESS_TOKEN`
+You need to have `CLIENT_ID` and `CLIENT_SECRET` obtained before.
 
 1. Request `CODE` with `CLIENT_ID`
     ```

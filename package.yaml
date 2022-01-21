@@ -20,7 +20,14 @@ description:         YouTube video manager TUI
 
 dependencies:
 - base >= 4.7 && < 5
+- containers
+- text
 - brick
+- dotenv
+- wreq
+- lens
+- aeson
+- lens-aeson
 
 library:
   source-dirs: src
