@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Api where
+module Ytm.Api where
 
 import Control.Lens
 import Data.Aeson.Lens
