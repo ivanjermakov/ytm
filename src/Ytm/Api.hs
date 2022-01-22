@@ -4,8 +4,8 @@ module Ytm.Api where
 
 import Control.Lens
 import Data.Aeson.Lens
-import Data.Maybe (isJust)
 import Data.String (fromString)
+import Data.Text (Text)
 import qualified Data.Text as T
 import Network.Wreq
 import System.Environment (getEnv)
@@ -14,9 +14,9 @@ data Credentials = Credentials {apiKey :: String, clientId :: String, accessToke
   deriving (Show)
 
 data Channel = Channel {channelId :: String, channelName :: String}
-  deriving (Show)
+  deriving (Show, Eq, Ord)
 
-type PageToken = T.Text
+type PageToken = Text
 
 credentials :: IO Credentials
 credentials = do
@@ -29,28 +29,11 @@ credentials = do
   let accT = T.unpack $ r ^. responseBody . key "access_token" . _String
   return $ Credentials k cId accT rt
 
-subscriptions :: Maybe PageToken -> Credentials -> IO [Channel]
-subscriptions npt c = do
-  (l, mn) <- subscriptions' npt c
-  nl <- if isJust mn then subscriptions mn c else return l
-  return $ l ++ nl
+domain :: String
+domain = "https://youtube.googleapis.com/youtube/v3/"
 
--- no nextPageToken means first page
-subscriptions' :: Maybe PageToken -> Credentials -> IO ([Channel], Maybe PageToken)
-subscriptions' npt c = do
-  let opts = defaults & authorizationHeader c & acceptJsonHeader
-  let domain = "https://youtube.googleapis.com/youtube/v3/subscriptions"
-  let qP = "?part=snippet%2CcontentDetails&maxResults=1000&mine=true&key" ++ clientId c
-  let nptP = maybe "" (\t -> "&pageToken=" ++ T.unpack t) npt
-  let url = concat [domain, qP, nptP]
-  r <- getWith opts url
-  let channelIds = parseR r (key "channelId")
-  let channelNames = parseR r (key "title")
-  let channels = zipWith Channel channelIds channelNames
-  let nextPageToken = r ^? responseBody . key "nextPageToken" . _String
-  return (channels, nextPageToken)
-  where
-    parseR r' k = T.unpack <$> r' ^.. responseBody . key "items" . values . key "snippet" . k . _String
+paramString :: String -> String -> Options -> Options
+paramString k v = param (T.pack k) .~ [T.pack v]
 
 acceptJsonHeader :: Options -> Options
 acceptJsonHeader = header "Accept" .~ ["application/json"]

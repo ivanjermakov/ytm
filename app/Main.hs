@@ -1,19 +1,20 @@
 module Main where
 
-import qualified Brick.Main as M
-import qualified Brick.Widgets.List as L
 import qualified Configuration.Dotenv as C
-import qualified Data.Vector as Vec
-import Ytm.App (runApp)
-
-data State = State {list :: L.List () String}
+import Ytm.Api (credentials)
+import Ytm.Api.Channel (subscriptions)
+import Ytm.Api.Time (daysBefore)
+import Ytm.Api.Video (channelVideos)
 
 main :: IO ()
 main = do
   _ <- C.loadFile C.defaultConfig
-  --k <- credentials
-  --ss <- subscriptions Nothing k
-  --print ss
-  --print $ length ss
-  _ <- runApp
+  c <- credentials
+  ch : _ <- subscriptions c
+  print ch
+  pubB <- daysBefore 10
+  vs <- channelVideos pubB ch c
+  putStr . unlines . map show $ vs
+  print $ length vs
+  --  _ <- runApp
   return ()

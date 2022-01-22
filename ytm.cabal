@@ -25,6 +25,9 @@ source-repository head
 library
   exposed-modules:
       Ytm.Api
+      Ytm.Api.Channel
+      Ytm.Api.Time
+      Ytm.Api.Video
       Ytm.App
   other-modules:
       Paths_ytm
@@ -34,11 +37,13 @@ library
       aeson
     , base >=4.7 && <5
     , brick
+    , bytestring
     , containers
     , dotenv
     , lens
     , lens-aeson
     , text
+    , time
     , vector
     , vty
     , wreq
@@ -55,11 +60,13 @@ executable ytm-exe
       aeson
     , base >=4.7 && <5
     , brick
+    , bytestring
     , containers
     , dotenv
     , lens
     , lens-aeson
     , text
+    , time
     , vector
     , vty
     , wreq
@@ -78,11 +85,13 @@ test-suite ytm-test
       aeson
     , base >=4.7 && <5
     , brick
+    , bytestring
     , containers
     , dotenv
     , lens
     , lens-aeson
     , text
+    , time
     , vector
     , vty
     , wreq
