@@ -24,7 +24,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Api
   other-modules:
       Paths_ytm
   hs-source-dirs:
