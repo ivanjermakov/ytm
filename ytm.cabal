@@ -40,6 +40,7 @@ library
     , brick
     , bytestring
     , containers
+    , directory
     , dotenv
     , http-client
     , lens
@@ -51,7 +52,6 @@ library
     , vector
     , vty
     , wreq
-    , xml-to-json-fast
   default-language: Haskell2010
 
 executable ytm-exe
@@ -67,6 +67,7 @@ executable ytm-exe
     , brick
     , bytestring
     , containers
+    , directory
     , dotenv
     , http-client
     , lens
@@ -78,7 +79,6 @@ executable ytm-exe
     , vector
     , vty
     , wreq
-    , xml-to-json-fast
     , ytm
   default-language: Haskell2010
 
@@ -96,6 +96,7 @@ test-suite ytm-test
     , brick
     , bytestring
     , containers
+    , directory
     , dotenv
     , http-client
     , lens
@@ -107,6 +108,5 @@ test-suite ytm-test
     , vector
     , vty
     , wreq
-    , xml-to-json-fast
     , ytm
   default-language: Haskell2010

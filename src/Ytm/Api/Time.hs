@@ -17,3 +17,5 @@ utcTimeFormat = "%FT%TZ"
 utcTimeFormatWithMillis :: String
 utcTimeFormatWithMillis = "%FT%T.000Z"
 
+utcTimeFormatWithTz :: String
+utcTimeFormatWithTz = "%FT%T+00:00"

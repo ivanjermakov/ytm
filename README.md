@@ -1,8 +1,17 @@
 # ytm
 
+## Install
+
+### Required programs
+
+- Stack
+- [yq](https://github.com/kislyuk/yq) (xml parsing)
+- curl
+
 ## Setup
 
 ### Obtaining `ACCESS_TOKEN`
+
 You need to have `CLIENT_ID` and `CLIENT_SECRET` obtained before.
 
 1. Request `CODE` with `CLIENT_ID`
