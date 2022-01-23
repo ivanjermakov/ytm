@@ -32,6 +32,10 @@ dependencies:
 - lens-aeson
 - time
 - bytestring
+- xml-to-json-fast
+- http-client
+- process
+- split
 
 library:
   source-dirs: src

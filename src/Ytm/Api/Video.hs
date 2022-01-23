@@ -4,19 +4,26 @@
 module Ytm.Api.Video where
 
 import Control.Lens
+import Control.Monad (liftM)
 import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Internal as BS
 import Data.List (sortOn)
+import qualified Data.Map as M
 import Data.Maybe (isJust)
 import qualified Data.Ord as O
 import qualified Data.Text as T
 import Data.Time (UTCTime)
 import Network.Wreq
 import Ytm.Api
+import Ytm.Api.Channel
 import Ytm.Api.Time
 
-data Video = Video {channel :: Channel, videoId :: String, publishedAt :: UTCTime, videoTitle :: String}
-  deriving (Show, Eq, Ord)
+subscriptionsVideos :: UTCTime -> Credentials -> IO SubscriptionsVideoMap
+subscriptionsVideos publishedAfter c = do
+  ss <- subscriptions c
+  vs <- mapM (\ch -> channelVideos publishedAfter ch c) ss
+  let svm = M.fromList . map (\vs' -> (channel (head vs'), vs')) $ vs
+  return svm
 
 channelVideos :: UTCTime -> Channel -> Credentials -> IO [Video]
 channelVideos = channelVideos' Nothing []
@@ -34,7 +41,7 @@ channelVideosPage npt publishedAfter ch c = do
           & acceptJsonHeader
           & paramString "key" (clientId c)
           & paramString "channelId" (channelId ch)
-          & paramString "publishedAfter" (showUTCTime publishedAfter)
+          & paramString "publishedAfter" (showUTCTime utcTimeFormat publishedAfter)
   let d = domain ++ "search"
   let qP = "?part=snippet%2Cid&maxResults=50&order=date&safeSearch=none"
   let nptP = maybe "" (\t -> "&pageToken=" ++ T.unpack t) npt
@@ -50,5 +57,5 @@ fromResponse ch r = (videos, nextPageToken)
     videoIds = parseR r (key "id" . key "videoId")
     videoTitles = parseR r (key "snippet" . key "title")
     videoPublishedAts = parseR r (key "snippet" . key "publishedAt")
-    videos = zipWith3 (Video ch) videoIds (map readUTCTime videoPublishedAts) videoTitles
+    videos = zipWith3 (Video ch) videoIds (map (readUTCTime utcTimeFormat) videoPublishedAts) videoTitles
     nextPageToken = r ^? responseBody . key "nextPageToken" . _String

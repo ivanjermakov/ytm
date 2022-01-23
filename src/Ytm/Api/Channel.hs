@@ -17,7 +17,6 @@ subscriptions = subscriptions' Nothing
       nl <- if isJust mn then subscriptions' mn c else return l
       return $ l ++ nl
 
--- no nextPageToken means first page
 subscriptionsPage :: Maybe PageToken -> Credentials -> IO ([Channel], Maybe PageToken)
 subscriptionsPage npt c = do
   let opts = defaults & authorizationHeader c & acceptJsonHeader
