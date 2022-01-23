@@ -4,6 +4,7 @@ module Ytm.Api.Channel where
 
 import Control.Lens
 import Data.Aeson.Lens
+import qualified Data.ByteString.Lazy.Internal as BS
 import Data.Maybe (isJust)
 import qualified Data.Text as T
 import Network.Wreq
@@ -19,16 +20,25 @@ subscriptions = subscriptions' Nothing
 
 subscriptionsPage :: Maybe PageToken -> Credentials -> IO ([Channel], Maybe PageToken)
 subscriptionsPage npt c = do
-  let opts = defaults & authorizationHeader c & acceptJsonHeader
+  let opts =
+        defaults
+          & authorizationHeader c
+          & acceptJsonHeader
+          & paramString "part" "snippet,contentDetails"
+          & paramString "maxResults" "50"
+          & paramString "mine" "true"
+          & paramString "key" (clientId c)
   let d = domain ++ "subscriptions"
-  let qP = "?part=snippet%2CcontentDetails&maxResults=50&mine=true&key=" ++ clientId c
   let nptP = maybe "" (\t -> "&pageToken=" ++ T.unpack t) npt
-  let url = concat [d, qP, nptP]
+  let url = d ++ nptP
   r <- getWith opts url
-  let channelIds = parseR r (key "resourceId" . key "channelId")
-  let channelNames = parseR r (key "title")
-  let channels = zipWith Channel channelIds channelNames
-  let nextPageToken = r ^? responseBody . key "nextPageToken" . _String
-  return (channels, nextPageToken)
+  return $ fromResponse r
+
+fromResponse :: Response BS.ByteString -> ([Channel], Maybe PageToken)
+fromResponse r = (channels, nextPageToken)
   where
     parseR r' k = T.unpack <$> r' ^.. responseBody . key "items" . values . key "snippet" . k . _String
+    channelIds = parseR r (key "resourceId" . key "channelId")
+    channelNames = parseR r (key "title")
+    channels = zipWith Channel channelIds channelNames
+    nextPageToken = r ^? responseBody . key "nextPageToken" . _String
