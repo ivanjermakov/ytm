@@ -41,7 +41,7 @@ channelVideosPage npt ch c = do
           & authorizationHeader c
           & acceptJsonHeader
           & paramString "key" (clientId c)
-          & paramString "playlistId" (fromJustErr (show ch) $ channelUploadsPlaylistId ch)
+          & paramString "playlistId" (channelUploadsPlaylistId ch)
           & paramString "part" "snippet,id,contentDetails"
           & paramString "maxResults" "50"
       d = domain ++ "playlistItems?"
@@ -50,11 +50,6 @@ channelVideosPage npt ch c = do
   r <- getWith opts url
   let vs = fromResponse ch r
   return vs
-
-fromJustErr :: String -> Maybe a -> a
-fromJustErr s m = case m of
-  Just a -> a
-  Nothing -> error s
 
 fromResponse :: Channel -> Response BS.ByteString -> ([Video], Maybe PageToken)
 fromResponse ch r = (videos, nextPageToken)

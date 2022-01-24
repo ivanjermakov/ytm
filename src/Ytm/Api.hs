@@ -4,7 +4,6 @@ module Ytm.Api where
 
 import Control.Lens
 import Data.Aeson.Lens
-import Data.Map (Map)
 import Data.String (fromString)
 import qualified Data.Text as T
 import Data.Time (UTCTime)
@@ -22,7 +21,7 @@ data Credentials = Credentials
 data Channel = Channel
   { channelId :: String,
     channelName :: String,
-    channelUploadsPlaylistId :: Maybe PlaylistId
+    channelUploadsPlaylistId :: PlaylistId
   }
   deriving (Show, Eq, Ord)
 
@@ -35,6 +34,8 @@ data Video = Video
   deriving (Show, Eq, Ord)
 
 type PageToken = String
+
+type ChannelId = String
 
 type PlaylistId = String
 
