@@ -4,22 +4,16 @@ import qualified Configuration.Dotenv as C
 import Ytm.Api
 import Ytm.Api.Time
 import Ytm.Api.Video
+import Ytm.Api.Channel
 
 main :: IO ()
 main = do
   _ <- C.loadFile C.defaultConfig
   c <- credentials
-  pubB <- daysBefore 2
-  let chs =
-        [ Channel "UC3tNpTOHsTnkmbwztCs30sA" "Nothernlion" Nothing,
-          Channel "UCidjPBdcX89oul0g13hdDtg" "Fine Design" Nothing,
-          Channel "UC9BvCxNJtIjphlDLQ8MZz3A" "Bulkin" Nothing,
-          Channel "UCgBjLPpPe8ytK0kAncnagdg" "SlivkiShow" Nothing,
-          Channel "UCY03gpyR__MuJtBpoSyIGnw" "Droider.ru" Nothing,
-          Channel "UCT-Dr0SSWbWrCG_xXVpiFew" "Sonchyk" Nothing
-        ]
-  upIds <- channelsPlaylistId chs c
-  print upIds
+  pubB <- daysBefore 1
+  chs <- subscriptions c
+  vs <- subscriptionsVideos pubB c
+  putStr . unlines . map (\(Video (Channel _ n _) _ a t) -> unwords [n, show a, t]) $ vs
   {-
   chs <- subscriptions c
   putStr . unlines . map channelId $ chs

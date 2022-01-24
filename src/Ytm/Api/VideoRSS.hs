@@ -5,7 +5,6 @@ module Ytm.Api.VideoRSS where
 
 import Control.Lens
 import Data.Aeson.Lens
-import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Time.Clock
 import System.Directory (removeFile)
@@ -14,14 +13,11 @@ import Ytm.Api
 import qualified Ytm.Api.Channel as C
 import Ytm.Api.Time
 
-subscriptionsVideos :: UTCTime -> Credentials -> IO SubscriptionsVideoMap
+subscriptionsVideos :: UTCTime -> Credentials -> IO [Video]
 subscriptionsVideos publishedAfter c = do
   ss <- C.subscriptions c
   vs <- mapM channelVideos ss
-  return $
-    M.fromList
-      . map ((\vs' -> (channel (head vs'), vs')) . filter (\v -> publishedAt v > publishedAfter))
-      $ vs
+  return $ concatMap (filter (\v -> publishedAt v > publishedAfter)) vs
 
 channelVideos :: Channel -> IO [Video]
 channelVideos ch = do

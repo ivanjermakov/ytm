@@ -34,8 +34,6 @@ data Video = Video
   }
   deriving (Show, Eq, Ord)
 
-type SubscriptionsVideoMap = Map Channel [Video]
-
 type PageToken = String
 
 type PlaylistId = String
