@@ -28,7 +28,6 @@ library
       Ytm.Api.Channel
       Ytm.Api.Time
       Ytm.Api.Video
-      Ytm.Api.VideoRSS
       Ytm.App
       Ytm.Util.List
   other-modules:
