@@ -1,34 +1,28 @@
 module Main where
 
 import qualified Configuration.Dotenv as C
-import Data.List (sortOn)
-import qualified Data.Map as M
-import qualified Data.Ord as O
 import Ytm.Api
+import Ytm.Api.Channel
 import Ytm.Api.Time
-import Ytm.Api.VideoRSS
+import Ytm.Api.Video
 
 main :: IO ()
 main = do
   _ <- C.loadFile C.defaultConfig
   c <- credentials
-  let chs =
-        [ Channel "UC3tNpTOHsTnkmbwztCs30sA" "Nothernlion",
-          Channel "UCidjPBdcX89oul0g13hdDtg" "Fine Design",
-          Channel "UC9BvCxNJtIjphlDLQ8MZz3A" "Bulkin",
-          Channel "UCgBjLPpPe8ytK0kAncnagdg" "SlivkiShow",
-          Channel "UCY03gpyR__MuJtBpoSyIGnw" "Droider.ru",
-          Channel "UCT-Dr0SSWbWrCG_xXVpiFew" "Sonchyk"
-        ]
   pubB <- daysBefore 2
-  print pubB
-  vss <- mapM channelVideos chs
-  let m =
-        M.fromList
-          . map (\vs' -> (channel (head vs'), vs'))
-          . filter (not . null)
-          $ vss
-  let vs = sortOn (O.Down . publishedAt). filter (\v -> publishedAt v > pubB) . concatMap snd . M.toList $ m
-  putStrLn . unlines . map (\v -> unwords [channelName . channel $ v, show $ publishedAt v, videoTitle v]) $ vs
+  let ch = Channel "UC_x5XG1OV2P6uZZ5FSM9Ttw" "Nothernlion"
+  upId <- channelPlaylistId ch c
+  print upId
+  {-
+  chs <- subscriptions c
+  putStr . unlines . map channelId $ chs
+  m <- subscriptionsVideos pubB c
+  putStrLn
+    . unlines
+    . map (concatMap (\v -> unwords [channelName . channel $ v, show $ publishedAt v, videoTitle v]) . snd)
+    . M.toList
+    $ m
+  -}
   --  _ <- runApp
   return ()

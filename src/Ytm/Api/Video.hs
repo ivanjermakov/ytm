@@ -4,7 +4,6 @@
 module Ytm.Api.Video where
 
 import Control.Lens
-import Control.Monad (liftM)
 import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Internal as BS
 import Data.List (sortOn)
@@ -15,12 +14,12 @@ import qualified Data.Text as T
 import Data.Time (UTCTime)
 import Network.Wreq
 import Ytm.Api
-import Ytm.Api.Channel
+import qualified Ytm.Api.Channel as C
 import Ytm.Api.Time
 
 subscriptionsVideos :: UTCTime -> Credentials -> IO SubscriptionsVideoMap
 subscriptionsVideos publishedAfter c = do
-  ss <- subscriptions c
+  ss <- C.subscriptions c
   vs <- mapM (\ch -> channelVideos publishedAfter ch c) ss
   let svm = M.fromList . map (\vs' -> (channel (head vs'), vs')) $ vs
   return svm
@@ -44,7 +43,7 @@ channelVideosPage npt publishedAfter ch c = do
           & paramString "publishedAfter" (showUTCTime utcTimeFormat publishedAfter)
   let d = domain ++ "search"
   let qP = "?part=snippet%2Cid&maxResults=50&order=date&safeSearch=none"
-  let nptP = maybe "" (\t -> "&pageToken=" ++ T.unpack t) npt
+  let nptP = maybe "" ("&pageToken=" ++) npt
   let url = concat [d, qP, nptP]
   r <- getWith opts url
   let vs = fromResponse ch r
@@ -58,4 +57,27 @@ fromResponse ch r = (videos, nextPageToken)
     videoTitles = parseR r (key "snippet" . key "title")
     videoPublishedAts = parseR r (key "snippet" . key "publishedAt")
     videos = zipWith3 (Video ch) videoIds (map (readUTCTime utcTimeFormat) videoPublishedAts) videoTitles
-    nextPageToken = r ^? responseBody . key "nextPageToken" . _String
+    nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String
+
+channelPlaylistId :: Channel -> Credentials -> IO PlaylistId
+channelPlaylistId ch c = do
+  let opts =
+        defaults
+          & authorizationHeader c
+          & acceptJsonHeader
+          & paramString "key" (clientId c)
+          & paramString "id" (channelId ch)
+          & paramString "part" "contentDetails"
+  let url = domain ++ "channels?"
+  r <- getWith opts url
+  let pId =
+        head $
+          T.unpack <$> r
+            ^.. responseBody
+              . key "items"
+              . values
+              . key "contentDetails"
+              . key "relatedPlaylists"
+              . key "uploads"
+              . _String
+  return pId

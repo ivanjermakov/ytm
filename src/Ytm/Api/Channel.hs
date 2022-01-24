@@ -28,8 +28,8 @@ subscriptionsPage npt c = do
           & paramString "maxResults" "50"
           & paramString "mine" "true"
           & paramString "key" (clientId c)
-  let d = domain ++ "subscriptions"
-  let nptP = maybe "" (\t -> "&pageToken=" ++ T.unpack t) npt
+  let d = domain ++ "subscriptions?"
+  let nptP = maybe "" ("&pageToken=" ++) npt
   let url = d ++ nptP
   r <- getWith opts url
   return $ fromResponse r
@@ -41,4 +41,4 @@ fromResponse r = (channels, nextPageToken)
     channelIds = parseR r (key "resourceId" . key "channelId")
     channelNames = parseR r (key "title")
     channels = zipWith Channel channelIds channelNames
-    nextPageToken = r ^? responseBody . key "nextPageToken" . _String
+    nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String

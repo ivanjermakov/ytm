@@ -11,12 +11,12 @@ import Data.Time.Clock
 import System.Directory (removeFile)
 import System.Process (readCreateProcess, readProcess, shell)
 import Ytm.Api
-import Ytm.Api.Channel
+import qualified Ytm.Api.Channel as C
 import Ytm.Api.Time
 
 subscriptionsVideos :: UTCTime -> Credentials -> IO SubscriptionsVideoMap
 subscriptionsVideos publishedAfter c = do
-  ss <- subscriptions c
+  ss <- C.subscriptions c
   vs <- mapM channelVideos ss
   return $
     M.fromList

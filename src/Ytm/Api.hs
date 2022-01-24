@@ -6,7 +6,6 @@ import Control.Lens
 import Data.Aeson.Lens
 import Data.Map (Map)
 import Data.String (fromString)
-import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time (UTCTime)
 import Network.Wreq
@@ -36,7 +35,9 @@ data Video = Video
 
 type SubscriptionsVideoMap = Map Channel [Video]
 
-type PageToken = Text
+type PageToken = String
+
+type PlaylistId = String
 
 credentials :: IO Credentials
 credentials = do
