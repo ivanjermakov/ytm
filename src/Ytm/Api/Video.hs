@@ -16,6 +16,7 @@ import Network.Wreq
 import Ytm.Api
 import qualified Ytm.Api.Channel as C
 import Ytm.Api.Time
+import Ytm.Util.List
 
 subscriptionsVideos :: UTCTime -> Credentials -> IO SubscriptionsVideoMap
 subscriptionsVideos publishedAfter c = do
@@ -59,25 +60,24 @@ fromResponse ch r = (videos, nextPageToken)
     videos = zipWith3 (Video ch) videoIds (map (readUTCTime utcTimeFormat) videoPublishedAts) videoTitles
     nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String
 
-channelPlaylistId :: Channel -> Credentials -> IO PlaylistId
-channelPlaylistId ch c = do
+channelsPlaylistId :: [Channel] -> Credentials -> IO [Channel]
+channelsPlaylistId chs c = do
   let opts =
         defaults
           & authorizationHeader c
           & acceptJsonHeader
           & paramString "key" (clientId c)
-          & paramString "id" (channelId ch)
+          & paramStrings "id" (map channelId chs)
           & paramString "part" "contentDetails"
   let url = domain ++ "channels?"
   r <- getWith opts url
-  let pId =
-        head $
-          T.unpack <$> r
-            ^.. responseBody
-              . key "items"
-              . values
-              . key "contentDetails"
-              . key "relatedPlaylists"
-              . key "uploads"
-              . _String
-  return pId
+  let pIds =
+        zip
+          (T.unpack <$> r ^.. responseBody . key "items" . values . key "id" . _String)
+          (T.unpack <$> r ^.. responseBody . key "items" . values . key "contentDetails" . key "relatedPlaylists" . key "uploads" . _String)
+  return $
+    mergeDropUnmatched
+      (\ch (_, i) -> ch {channelUploadsPlaylistId = Just i})
+      (\ch (chId, _) -> channelId ch == chId)
+      chs
+      pIds

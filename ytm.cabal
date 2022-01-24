@@ -30,6 +30,7 @@ library
       Ytm.Api.Video
       Ytm.Api.VideoRSS
       Ytm.App
+      Ytm.Util.List
   other-modules:
       Paths_ytm
   hs-source-dirs:

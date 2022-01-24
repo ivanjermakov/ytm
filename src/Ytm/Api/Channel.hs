@@ -40,5 +40,5 @@ fromResponse r = (channels, nextPageToken)
     parseR r' k = T.unpack <$> r' ^.. responseBody . key "items" . values . key "snippet" . k . _String
     channelIds = parseR r (key "resourceId" . key "channelId")
     channelNames = parseR r (key "title")
-    channels = zipWith Channel channelIds channelNames
+    channels = zipWith (\i n -> Channel i n Nothing) channelIds channelNames
     nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String

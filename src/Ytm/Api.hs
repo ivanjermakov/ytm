@@ -21,7 +21,8 @@ data Credentials = Credentials
 
 data Channel = Channel
   { channelId :: String,
-    channelName :: String
+    channelName :: String,
+    channelUploadsPlaylistId :: Maybe PlaylistId
   }
   deriving (Show, Eq, Ord)
 
@@ -62,6 +63,9 @@ domain = "https://youtube.googleapis.com/youtube/v3/"
 
 paramString :: String -> String -> Options -> Options
 paramString k v = param (T.pack k) .~ [T.pack v]
+
+paramStrings :: String -> [String] -> Options -> Options
+paramStrings k v = param (T.pack k) .~ map T.pack v
 
 acceptJsonHeader :: Options -> Options
 acceptJsonHeader = header "Accept" .~ ["application/json"]
