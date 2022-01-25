@@ -36,6 +36,7 @@ dependencies:
 - process
 - split
 - directory
+- async
 
 library:
   source-dirs: src
