@@ -15,7 +15,11 @@ data State = State
     sVideosL :: L.List () Video
   }
 
-data Settings = Settings {fetchDays :: Int}
+data Settings = Settings
+  { fetchDays :: Int,
+    videosDumpPath :: FilePath,
+    channelsDumpPath :: FilePath
+  }
   deriving (Show)
 
 instance Show State where
@@ -23,6 +27,7 @@ instance Show State where
 
 data CustomEvent
   = CredentialsLoaded Credentials
+  | DumpLoaded ([Channel], [Video])
   | ChannelsLoaded [Channel]
   | ChannelVideosLoaded [Video]
   | VideosLoaded

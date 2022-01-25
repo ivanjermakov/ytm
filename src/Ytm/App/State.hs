@@ -9,10 +9,10 @@ import qualified Brick.Types as T
 import qualified Brick.Widgets.List as L
 import Control.Concurrent (forkIO)
 import Control.Concurrent.Async (mapConcurrently)
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Control.Monad.IO.Class
 import Data.List (sortOn)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import qualified Data.Ord as O
 import qualified Data.Vector as Vec
 import qualified Graphics.Vty as V
@@ -22,11 +22,17 @@ import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Time (daysBefore)
 import Ytm.Api.Video (channelVideos)
 import Ytm.App.Types
+import Ytm.Util.Persistence
 
 initState :: BChan CustomEvent -> State
 initState ch =
   State
-    { sSettings = Settings 4,
+    { sSettings =
+        Settings
+          { fetchDays = 4,
+            videosDumpPath = "videos.dump",
+            channelsDumpPath = "channels.dump"
+          },
       bChan = ch,
       sStatus = "ytm started",
       sCredentials = Nothing,
@@ -40,7 +46,8 @@ handleEvent :: State -> T.BrickEvent () CustomEvent -> T.EventM () (T.Next State
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
     (CredentialsLoaded c) -> handleCredentialsLoaded c s
-    (ChannelsLoaded chs) -> M.continue (s {sChannels = chs, sStatus = "channels loaded: " ++ show (length chs)})
+    DumpLoaded d -> handleDumpLoaded d s
+    (ChannelsLoaded chs) -> handleChannelsLoaded chs s
     (ChannelVideosLoaded vs) -> handleChannelVideosLoaded vs s
     VideosLoaded -> handleVideosLoaded s
   T.VtyEvent k -> case k of
@@ -53,31 +60,37 @@ handleEvent s e = case e of
       moveBy n = M.continue . (\l -> s {sVideosL = l}) . L.listMoveBy n =<< L.handleListEvent k (sVideosL s)
       handleL = M.continue . (\l -> s {sVideosL = l}) =<< L.handleListEvent k (sVideosL s)
 
-handleVideosLoaded :: State -> T.EventM () (T.Next State)
-handleVideosLoaded s = M.continue (s {sVideosL = L.list () (Vec.fromList sortVs) 1})
-  where
-    sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
-
 handleCredentialsLoaded :: Credentials -> State -> T.EventM () (T.Next State)
 handleCredentialsLoaded c s = do
-  let ns = (s {sCredentials = Just c, sStatus = "credentials loaded"})
-  M.continue ns
-
-handleLoadVideos :: State -> T.EventM () (T.Next State)
-handleLoadVideos s = do
-  let ns = (s {sStatus = "refreshing videos"})
-      c = fromJust . sCredentials $ s
   void . liftIO . forkIO $ do
-    chs <- subscriptions c
-    writeBChan (bChan s) (ChannelsLoaded chs)
-    void $ mapConcurrently (chLoaded c) chs
-    writeBChan (bChan s) VideosLoaded
-  M.continue ns
-  where
-    chLoaded c ch = do
-      db <- daysBefore (fetchDays . sSettings $ s)
-      cVs <- channelVideos db ch c
-      writeBChan (bChan s) (ChannelVideosLoaded cVs)
+    l <- loadFromDump s
+    when (isJust l) $ writeBChan (bChan s) (DumpLoaded $ fromJust l)
+  M.continue
+    ( s
+        { sCredentials = Just c,
+          sStatus = "credentials loaded"
+        }
+    )
+
+handleDumpLoaded :: ([Channel], [Video]) -> State -> T.EventM () (T.Next State)
+handleDumpLoaded (chs, vs) s = do
+  liftIO $ writeBChan (bChan s) VideosLoaded
+  M.continue
+    ( s
+        { sChannels = chs,
+          sVideos = vs,
+          sStatus = "videos loaded from cache DATE"
+        }
+    )
+
+handleChannelsLoaded :: [Channel] -> State -> T.EventM () (T.Next State)
+handleChannelsLoaded chs s =
+  M.continue
+    ( s
+        { sChannels = chs,
+          sStatus = "channels loaded: " ++ show (length chs)
+        }
+    )
 
 handleChannelVideosLoaded :: [Video] -> State -> T.EventM () (T.Next State)
 handleChannelVideosLoaded vs s =
@@ -95,3 +108,37 @@ handleChannelVideosLoaded vs s =
         (1 + sLoadedChannels s)
         (length (sChannels s))
         (length (sVideos s))
+
+handleVideosLoaded :: State -> T.EventM () (T.Next State)
+handleVideosLoaded s = do
+  dumpVs
+  M.continue (s {sVideosL = L.list () (Vec.fromList sortVs) 1})
+  where
+    sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
+    dumpVs = liftIO $ dump (videosDumpPath . sSettings $ s) (sVideos s)
+
+handleLoadVideos :: State -> T.EventM () (T.Next State)
+handleLoadVideos s = do
+  let ns = (s {sStatus = "refreshing videos"})
+      c = fromJust . sCredentials $ s
+  void . liftIO . forkIO $ do
+    chs <- subscriptions c
+    dumpChs chs
+    writeBChan (bChan s) (ChannelsLoaded chs)
+    void $ mapConcurrently (chLoaded c) chs
+    writeBChan (bChan s) VideosLoaded
+  M.continue ns
+  where
+    dumpChs = dump (channelsDumpPath . sSettings $ s)
+    chLoaded c ch = do
+      db <- daysBefore (fetchDays . sSettings $ s)
+      cVs <- channelVideos db ch c
+      writeBChan (bChan s) (ChannelVideosLoaded cVs)
+
+loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
+loadFromDump s = do
+  mChs <- loadChannels (channelsDumpPath . sSettings $ s)
+  mVs <- loadVideos (videosDumpPath . sSettings $ s)
+  case (mChs, mVs) of
+    (Just chs, Just vs) -> return $ Just (chs, vs)
+    _ -> return Nothing

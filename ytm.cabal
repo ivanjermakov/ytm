@@ -34,6 +34,7 @@ library
       Ytm.App.State
       Ytm.App.Types
       Ytm.Util.List
+      Ytm.Util.Persistence
   other-modules:
       Paths_ytm
   hs-source-dirs:

@@ -23,7 +23,7 @@ data Channel = Channel
     channelName :: String,
     channelUploadsPlaylistId :: PlaylistId
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Read, Eq, Ord)
 
 data Video = Video
   { channel :: Channel,
@@ -31,7 +31,7 @@ data Video = Video
     publishedAt :: UTCTime,
     videoTitle :: String
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Read, Eq, Ord)
 
 type PageToken = String
 
