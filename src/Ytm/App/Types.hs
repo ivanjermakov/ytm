@@ -12,7 +12,8 @@ data State = State
     sChannels :: [Channel],
     sLoadedChannels :: Int,
     sVideos :: [Video],
-    sVideosL :: L.List () Video
+    sVideosL :: L.List ResourceName Video,
+    sVideosLWidth :: Int
   }
 
 data Settings = Settings
@@ -22,9 +23,6 @@ data Settings = Settings
   }
   deriving (Show)
 
-instance Show State where
-  show (State set _ st c ch lCh v vl) = "State " ++ show (set, st, c, ch, lCh, v, vl)
-
 data CustomEvent
   = CredentialsLoaded Credentials
   | DumpLoaded ([Channel], [Video])
@@ -32,3 +30,6 @@ data CustomEvent
   | ChannelVideosLoaded [Video]
   | VideosLoaded
   deriving (Show)
+
+data ResourceName = VideoList
+  deriving (Eq, Ord, Show)

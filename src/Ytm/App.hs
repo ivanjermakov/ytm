@@ -27,11 +27,11 @@ runApp = do
   initialVty <- V.mkVty V.defaultConfig
   M.customMain initialVty (V.mkVty V.defaultConfig) (Just ch) app s
 
-app :: M.App State CustomEvent ()
+app :: M.App State CustomEvent ResourceName
 app = M.App draw chooseCursor handleEvent startEvent attrMap
 
 chooseCursor :: s -> [T.CursorLocation n] -> Maybe (T.CursorLocation n)
 chooseCursor = M.showFirstCursor
 
-startEvent :: State -> T.EventM () State
+startEvent :: State -> T.EventM ResourceName State
 startEvent = return

@@ -1,6 +1,3 @@
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE OverloadedStrings #-}
-
 module Ytm.App.State where
 
 import Brick.BChan (BChan, writeBChan)
@@ -30,8 +27,8 @@ initState ch =
     { sSettings =
         Settings
           { fetchDays = 4,
-            videosDumpPath = "videos.dump",
-            channelsDumpPath = "channels.dump"
+            videosDumpPath = ".cache/videos.dump",
+            channelsDumpPath = ".cache/channels.dump"
           },
       bChan = ch,
       sStatus = "ytm started",
@@ -39,10 +36,11 @@ initState ch =
       sChannels = [],
       sLoadedChannels = 0,
       sVideos = [],
-      sVideosL = L.list () (Vec.fromList []) 1
+      sVideosL = L.list VideoList (Vec.fromList []) 1,
+      sVideosLWidth = 0
     }
 
-handleEvent :: State -> T.BrickEvent () CustomEvent -> T.EventM () (T.Next State)
+handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
     (CredentialsLoaded c) -> handleCredentialsLoaded c s
@@ -55,12 +53,13 @@ handleEvent s e = case e of
     V.EvKey (V.KChar 'i') [] -> moveBy (-1)
     V.EvKey (V.KChar 'k') [] -> moveBy 1
     V.EvKey (V.KChar 'r') [] -> handleLoadVideos s
+    V.EvResize _ _ -> handleResize s
     _ -> handleL
     where
       moveBy n = M.continue . (\l -> s {sVideosL = l}) . L.listMoveBy n =<< L.handleListEvent k (sVideosL s)
       handleL = M.continue . (\l -> s {sVideosL = l}) =<< L.handleListEvent k (sVideosL s)
 
-handleCredentialsLoaded :: Credentials -> State -> T.EventM () (T.Next State)
+handleCredentialsLoaded :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 handleCredentialsLoaded c s = do
   void . liftIO . forkIO $ do
     l <- loadFromDump s
@@ -72,7 +71,7 @@ handleCredentialsLoaded c s = do
         }
     )
 
-handleDumpLoaded :: ([Channel], [Video]) -> State -> T.EventM () (T.Next State)
+handleDumpLoaded :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
 handleDumpLoaded (chs, vs) s = do
   liftIO $ writeBChan (bChan s) VideosLoaded
   M.continue
@@ -83,7 +82,7 @@ handleDumpLoaded (chs, vs) s = do
         }
     )
 
-handleChannelsLoaded :: [Channel] -> State -> T.EventM () (T.Next State)
+handleChannelsLoaded :: [Channel] -> State -> T.EventM ResourceName (T.Next State)
 handleChannelsLoaded chs s =
   M.continue
     ( s
@@ -92,7 +91,7 @@ handleChannelsLoaded chs s =
         }
     )
 
-handleChannelVideosLoaded :: [Video] -> State -> T.EventM () (T.Next State)
+handleChannelVideosLoaded :: [Video] -> State -> T.EventM ResourceName (T.Next State)
 handleChannelVideosLoaded vs s =
   M.continue
     ( s
@@ -109,15 +108,19 @@ handleChannelVideosLoaded vs s =
         (length (sChannels s))
         (length (sVideos s))
 
-handleVideosLoaded :: State -> T.EventM () (T.Next State)
+handleVideosLoaded :: State -> T.EventM ResourceName (T.Next State)
 handleVideosLoaded s = do
   dumpVs
-  M.continue (s {sVideosL = L.list () (Vec.fromList sortVs) 1})
+  e <- M.lookupExtent VideoList
+  w <- case e of
+    Nothing -> return . sVideosLWidth $ s
+    Just (T.Extent _ _ (width, _)) -> return width
+  M.continue (s {sVideosL = L.list VideoList (Vec.fromList sortVs) 1, sVideosLWidth = w})
   where
     sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
     dumpVs = liftIO $ dump (videosDumpPath . sSettings $ s) (sVideos s)
 
-handleLoadVideos :: State -> T.EventM () (T.Next State)
+handleLoadVideos :: State -> T.EventM ResourceName (T.Next State)
 handleLoadVideos s = do
   let ns = (s {sStatus = "refreshing videos"})
       c = fromJust . sCredentials $ s
@@ -134,6 +137,14 @@ handleLoadVideos s = do
       db <- daysBefore (fetchDays . sSettings $ s)
       cVs <- channelVideos db ch c
       writeBChan (bChan s) (ChannelVideosLoaded cVs)
+
+handleResize :: State -> T.EventM ResourceName (T.Next State)
+handleResize s = do
+  e <- M.lookupExtent VideoList
+  w <- case e of
+    Nothing -> return . sVideosLWidth $ s
+    Just (T.Extent _ _ (width, _)) -> return width
+  M.continue (s {sVideosLWidth = w})
 
 loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
 loadFromDump s = do
