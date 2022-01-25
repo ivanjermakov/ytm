@@ -6,6 +6,5 @@ import Ytm.App
 main :: IO ()
 main = do
   _ <- C.loadFile C.defaultConfig
-  fs <- runApp
-  print fs
+  _ <- runApp
   return ()
