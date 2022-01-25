@@ -29,6 +29,10 @@ library
       Ytm.Api.Time
       Ytm.Api.Video
       Ytm.App
+      Ytm.App.Attr
+      Ytm.App.Draw
+      Ytm.App.State
+      Ytm.App.Types
       Ytm.Util.List
   other-modules:
       Paths_ytm

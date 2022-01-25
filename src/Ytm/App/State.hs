@@ -12,6 +12,7 @@ import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.List (sortOn)
+import Data.Maybe (fromJust)
 import qualified Data.Ord as O
 import qualified Data.Vector as Vec
 import qualified Graphics.Vty as V
@@ -46,6 +47,7 @@ handleEvent s e = case e of
     V.EvKey (V.KChar 'q') [] -> M.halt s
     V.EvKey (V.KChar 'i') [] -> moveBy (-1)
     V.EvKey (V.KChar 'k') [] -> moveBy 1
+    V.EvKey (V.KChar 'r') [] -> handleLoadVideos s
     _ -> handleL
     where
       moveBy n = M.continue . (\l -> s {sVideosL = l}) . L.listMoveBy n =<< L.handleListEvent k (sVideosL s)
@@ -58,15 +60,21 @@ handleVideosLoaded s = M.continue (s {sVideosL = L.list () (Vec.fromList sortVs)
 
 handleCredentialsLoaded :: Credentials -> State -> T.EventM () (T.Next State)
 handleCredentialsLoaded c s = do
-  let ns = (s {sCredentials = Just c, sStatus = "loading channels"})
+  let ns = (s {sCredentials = Just c, sStatus = "credentials loaded"})
+  M.continue ns
+
+handleLoadVideos :: State -> T.EventM () (T.Next State)
+handleLoadVideos s = do
+  let ns = (s {sStatus = "refreshing videos"})
+      c = fromJust . sCredentials $ s
   void . liftIO . forkIO $ do
     chs <- subscriptions c
     writeBChan (bChan s) (ChannelsLoaded chs)
-    void $ mapConcurrently chLoaded chs
+    void $ mapConcurrently (chLoaded c) chs
     writeBChan (bChan s) VideosLoaded
   M.continue ns
   where
-    chLoaded ch = do
+    chLoaded c ch = do
       db <- daysBefore (fetchDays . sSettings $ s)
       cVs <- channelVideos db ch c
       writeBChan (bChan s) (ChannelVideosLoaded cVs)
