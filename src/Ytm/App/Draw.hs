@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE TupleSections #-}
 
 module Ytm.App.Draw where
@@ -6,7 +7,7 @@ import Brick.Types
 import Brick.Widgets.Center (center)
 import Brick.Widgets.Core
 import qualified Brick.Widgets.List as L
-import Data.List (intercalate)
+import Data.List (intercalate, intersperse)
 import Data.Maybe (fromMaybe)
 import Text.Printf (printf)
 import Ytm.Api
@@ -15,21 +16,38 @@ import Ytm.App.Attr
 import Ytm.App.Types
 
 draw :: State -> [Widget ResourceName]
-draw s = [vBox [main, hl, sl]]
+draw s = [vBox [header, hBox [vBox [main, hl, sl]]]]
   where
+    w = sVideosLWidth s
+    header = drawListHeader w
     main = if null . sVideos $ s then noVs else ls
-    ls = L.renderList drawListItem True (fmap (,sVideosLWidth s) . sVideosL $ s)
     noVs = center $ str "no videos loaded"
+    ls = L.renderList drawListItem True (fmap (,w) . sVideosL $ s)
     hl = drawHelpLine s
     sl = drawStatusLine s
 
-drawListItem :: Bool -> (Video, Int) -> Widget ResourceName
-drawListItem _ (v, w) = hBox [vTitle, chName, pubDate]
+listRatios :: [Float]
+listRatios = [1, 10, 4, 2]
+
+drawListHeader :: Int -> Widget ResourceName
+drawListHeader w = hBoxGapped 1 [strFixed ps "s", strFixed ts "title", strFixed ns "channel", strFixed ds "date"]
   where
-    (ts : ns : ds : _) = toFractions [10, 4, 2] w
+    (ps : ts : ns : ds : _) = toFractions listRatios (w - 1)
+
+drawListItem :: Bool -> (VideoItem, Int) -> Widget ResourceName
+drawListItem _ (i, w) = hBoxGapped 1 [progress, vTitle, chName, pubDate]
+  where
+    (ps : ts : ns : ds : _) = toFractions listRatios (w - 1)
+    v = itemVideo i
     vTitle = strFixed ts . videoTitle $ v
     chName = strFixed ns . channelName $ channel v
     pubDate = strFixed ds . showUTCTime "%R %b %d" . publishedAt $ v
+    progress = strFixed ps case itemStatus i of
+      Available -> ""
+      Downloaded -> "D"
+      Downloading -> case itemProgress i of
+        Nothing -> "D~~"
+        Just p -> printf "%03.0f%%" p
 
 drawStatusLine :: State -> Widget ResourceName
 drawStatusLine s = hBox [str (sStatus s), hSpacer, str position]
@@ -46,19 +64,23 @@ drawHelpLine _ = hBox [help, hSpacer]
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '
 
+padStrRight :: Int -> String -> String
+padStrRight n s = s ++ replicate (n - length s) ' '
+
 strFixed :: Int -> String -> Widget ResourceName
-strFixed n s = toSize n (str s)
+strFixed n s = toSize n (str . padStrRight n $ s)
 
 toSize :: Int -> Widget ResourceName -> Widget ResourceName
 toSize n = hLimit n . padRight Max
 
-toFractions :: [Int] -> Int -> [Int]
+hBoxGapped :: Int -> [Widget ResourceName] -> Widget ResourceName
+hBoxGapped n ws = hBox $ intersperse (str . replicate n $ ' ') ws
+
+-- TODO: support fixed sized
+toFractions :: [Float] -> Int -> [Int]
 toFractions frs w = init res ++ [last res + offset]
   where
     offset = w - sum res
     res = map calc frs
     tFrs = sum frs
-    calc fr = floor $ fromIntegral fr / fromIntegral tFrs * fromIntegral w
-
--- Create beautiful piano music with just 3 notes 🎹💐  (1 min piano lesson) #shorts
--- How Romance Scammers Cheat You Out of Your Cash and Your Heart [Advertiser Content From Zelle®]
+    calc fr = floor $ fr / tFrs * fromIntegral w

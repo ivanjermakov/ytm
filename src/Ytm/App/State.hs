@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Ytm.App.State where
 
 import Brick.BChan (BChan, writeBChan)
@@ -55,7 +57,8 @@ handleEvent s e = case e of
     (ChannelsLoaded chs) -> channelsLoadedH chs s
     (ChannelVideosLoaded vs) -> channelVideosLoadedH vs s
     VideosLoaded -> videosLoadedH s
-    VideoDownloaded vPath -> videoDownloadedH vPath s
+    VideoDownloaded vId vPath -> videoDownloadedH vId vPath s
+    DownloadProgress vId mp m -> downloadProgressH vId mp m s
     (Log m l) -> logH m l s
   T.VtyEvent k -> case k of
     V.EvKey (V.KChar 'q') [] -> M.halt s
@@ -73,7 +76,7 @@ handleEvent s e = case e of
 
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
-  sendChan (Log "credentials loaded" INFO) s
+  sendChan (Log "credentials loaded" Info) s
   async $ do
     l <- loadFromDump s
     when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s
@@ -120,15 +123,15 @@ videosLoadedH :: State -> T.EventM ResourceName (T.Next State)
 videosLoadedH s = do
   dumpVs
   w <- videoListWidth s
-  M.continue (s {sVideosL = L.list VideoList (Vec.fromList sortVs) 1, sVideosLWidth = w})
+  M.continue (s {sVideosL = L.list VideoList (Vec.fromList vItems) 1, sVideosLWidth = w})
   where
-    sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
+    vItems = map (\v -> VideoItem v Nothing Available) . sortOn (O.Down . publishedAt) . sVideos $ s
     dumpVs = liftIO $ dump (videosDumpPath . sSettings $ s) (sVideos s)
 
-videoDownloadedH :: FilePath -> State -> T.EventM ResourceName (T.Next State)
-videoDownloadedH vPath s = do
-  sendChan (Log ("downloaded video: " ++ vPath) INFO) s
-  M.continue s
+videoDownloadedH :: VideoId -> FilePath -> State -> T.EventM ResourceName (T.Next State)
+videoDownloadedH vId vPath s = do
+  sendChan (Log ("downloaded video: " ++ vPath) Info) s
+  M.continue $ updateVideoL (\i -> i {itemProgress = Just 100, itemStatus = Downloaded}) vId s
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
 loadVideosH s = do
@@ -151,18 +154,25 @@ loadVideosH s = do
 downloadVideoH :: State -> T.EventM ResourceName (T.Next State)
 downloadVideoH s = case mId of
   Nothing -> do
-    sendChan (Log "no selected video to download" INFO) s
+    sendChan (Log "no selected video to download" Info) s
     M.continue s
   Just vId -> do
+    let s' = updateVideoL (\i -> i {itemStatus = Downloading}) vId s
+    sendChan (Log ("downloading video: " ++ vId) Info) s'
     async $ do
       res <- download vId videoDestinationPath logF
       case res of
         Nothing -> return ()
-        Just vPath -> sendChan (VideoDownloaded vPath) s
-    M.continue s
+        Just vPath -> sendChan (VideoDownloaded vId vPath) s'
+    M.continue s'
   where
-    mId = fmap (videoId . snd) . L.listSelectedElement . sVideosL $ s
-    logF (i, p, m) = sendChan (Log (unwords [i, show p ++ "%", m]) INFO) s
+    mId = fmap (videoId . itemVideo . snd) . L.listSelectedElement . sVideosL $ s
+    logF (i, p, m) = sendChan (DownloadProgress i p m) s
+
+downloadProgressH :: VideoId -> Maybe Progress -> String -> State -> T.EventM ResourceName (T.Next State)
+downloadProgressH vId mp _ s = M.continue case mp of
+  Nothing -> s
+  Just p -> updateVideoL (\i -> i {itemProgress = Just p}) vId s
 
 -- TODO: styling
 logH :: String -> LogLevel -> State -> T.EventM ResourceName (T.Next State)
@@ -193,3 +203,12 @@ sendChan e s = liftIO $ writeBChan (bChan s) e
 
 async :: (MonadIO m) => IO () -> m ()
 async = void . liftIO . forkIO
+
+updateVideoL :: (VideoItem -> VideoItem) -> VideoId -> State -> State
+updateVideoL f vId s =
+  s
+    { sVideosL =
+        fmap (\i -> if (== vId) . videoId . itemVideo $ i then f i else i)
+          . sVideosL
+          $ s
+    }

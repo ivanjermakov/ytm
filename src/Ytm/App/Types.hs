@@ -12,12 +12,22 @@ data State = State
     sChannels :: [Channel],
     sLoadedChannels :: Int,
     sVideos :: [Video],
-    sVideosL :: L.List ResourceName Video,
+    sVideosL :: L.List ResourceName VideoItem,
     sVideosLWidth :: Int,
     sLog :: [(LogLevel, String)]
   }
 
-data LogLevel = INFO | WARN | ERROR
+data VideoItem = VideoItem
+  { itemVideo :: Video,
+    itemProgress :: Maybe Progress,
+    itemStatus :: VideoStatus
+  }
+  deriving (Show, Read, Eq, Ord)
+
+data VideoStatus = Available | Downloading | Downloaded
+  deriving (Show, Read, Eq, Ord)
+
+data LogLevel = Info | Warn | Error
   deriving (Show, Read, Eq, Ord)
 
 data Settings = Settings
@@ -33,9 +43,12 @@ data CustomEvent
   | ChannelsLoaded [Channel]
   | ChannelVideosLoaded [Video]
   | VideosLoaded
-  | VideoDownloaded FilePath
+  | VideoDownloaded VideoId FilePath
+  | DownloadProgress VideoId (Maybe Progress) String
   | Log String LogLevel
   deriving (Show)
 
 data ResourceName = VideoList
   deriving (Eq, Ord, Show)
+
+type Progress = Float
