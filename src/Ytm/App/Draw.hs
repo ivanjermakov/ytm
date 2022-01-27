@@ -11,10 +11,10 @@ import Data.List (intercalate, intersperse)
 import Data.Maybe (fromMaybe)
 import Text.Printf (printf)
 import Ytm.Api
-import Ytm.Api.Time
 import Ytm.App.Attr
 import Ytm.App.State.Core
 import Ytm.App.Types
+import Ytm.Util.Time
 
 draw :: State -> [Widget ResourceName]
 draw s = [vBox [header, hBox [vBox [main, hl, sl]]]]

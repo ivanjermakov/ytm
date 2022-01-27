@@ -6,15 +6,15 @@ module Ytm.Api.Video where
 import Control.Lens
 import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Internal as BS
-import Data.List (sortOn)
-import Data.Maybe (isJust)
+import Data.List (sortOn, zipWith6)
+import Data.Maybe (isJust, mapMaybe)
 import qualified Data.Ord as O
 import qualified Data.Text as T
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, ctTime)
+import Data.Time.Format.ISO8601 (iso8601ParseM)
 import Network.Wreq
 import Ytm.Api
 import qualified Ytm.Api.Channel as C
-import Ytm.Api.Time
 
 subscriptionsVideos :: UTCTime -> Credentials -> IO [Video]
 subscriptionsVideos publishedAfter c = do
@@ -34,9 +34,25 @@ channelVideos = channelVideos' Nothing []
       where
         daysBP v = publishedAt v > daysB
 
--- TODO: get video metadata (description, duration, view count)
 channelVideosPage :: Maybe PageToken -> Channel -> Credentials -> IO ([Video], Maybe PageToken)
 channelVideosPage npt ch c = do
+  (vIds, npt') <- channelVideoIdsPage npt ch c
+  let opts =
+        defaults
+          & authorizationHeader c
+          & acceptJsonHeader
+          & paramString "key" (clientId c)
+          & paramStrings "id" vIds
+          & paramString "part" "contentDetails,statistics,snippet"
+          & paramString "maxResults" "50"
+      d = domain ++ "videos?"
+      nptP = maybe "" ("&pageToken=" ++) npt
+      url = d ++ nptP
+  r <- getWith opts url
+  return (fromResponse ch r, npt')
+
+channelVideoIdsPage :: Maybe PageToken -> Channel -> Credentials -> IO ([VideoId], Maybe PageToken)
+channelVideoIdsPage npt ch c = do
   let opts =
         defaults
           & authorizationHeader c
@@ -49,15 +65,26 @@ channelVideosPage npt ch c = do
       nptP = maybe "" ("&pageToken=" ++) npt
       url = d ++ nptP
   r <- getWith opts url
-  let vs = fromResponse ch r
-  return vs
+  let videoIds = T.unpack <$> r ^.. responseBody . key "items" . values . (key "snippet" . key "resourceId" . key "videoId") . _String
+  let nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String
+  return (videoIds, nextPageToken)
 
-fromResponse :: Channel -> Response BS.ByteString -> ([Video], Maybe PageToken)
-fromResponse ch r = (videos, nextPageToken)
+fromResponse :: Channel -> Response BS.ByteString -> [Video]
+fromResponse ch r = videos
   where
     parseR r' k = T.unpack <$> r' ^.. responseBody . key "items" . values . k . _String
-    videoIds = parseR r (key "snippet" . key "resourceId" . key "videoId")
-    videoTitles = parseR r (key "snippet" . key "title")
-    videoPublishedAts = parseR r (key "contentDetails" . key "videoPublishedAt")
-    videos = zipWith3 (Video ch) videoIds (map (readUTCTime utcTimeFormat) videoPublishedAts) videoTitles
-    nextPageToken = T.unpack <$> r ^? responseBody . key "nextPageToken" . _String
+    vIds = parseR r (key "id")
+    vPublishedAts = parseR r (key "snippet" . key "publishedAt")
+    vTitles = parseR r (key "snippet" . key "title")
+    vDescriptions = parseR r (key "snippet" . key "description")
+    vDurations = parseR r (key "contentDetails" . key "duration")
+    vViews = parseR r (key "statistics" . key "viewCount")
+    videos =
+      zipWith6
+        (Video ch)
+        vIds
+        (mapMaybe iso8601ParseM vPublishedAts)
+        vTitles
+        vDescriptions
+        (map ctTime . mapMaybe iso8601ParseM $ vDurations)
+        (map read vViews)

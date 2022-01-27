@@ -26,7 +26,6 @@ library
   exposed-modules:
       Ytm.Api
       Ytm.Api.Channel
-      Ytm.Api.Time
       Ytm.Api.Video
       Ytm.App
       Ytm.App.Attr
@@ -41,6 +40,7 @@ library
       Ytm.Play
       Ytm.Util.List
       Ytm.Util.Persistence
+      Ytm.Util.Time
   other-modules:
       Paths_ytm
   hs-source-dirs:

@@ -6,7 +6,7 @@ import Control.Lens
 import Data.Aeson.Lens
 import Data.String (fromString)
 import qualified Data.Text as T
-import Data.Time (UTCTime)
+import Data.Time (NominalDiffTime, UTCTime)
 import Network.Wreq
 import System.Environment (getEnv)
 
@@ -29,7 +29,10 @@ data Video = Video
   { channel :: Channel,
     videoId :: VideoId,
     publishedAt :: UTCTime,
-    videoTitle :: String
+    videoTitle :: String,
+    videoDescription :: String,
+    videoDuration :: NominalDiffTime,
+    videoViews :: Int
   }
   deriving (Show, Read, Eq, Ord)
 

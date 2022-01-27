@@ -8,7 +8,6 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Maybe (fromJust)
 import Ytm.Api
 import Ytm.Api.Channel (subscriptions)
-import Ytm.Api.Time (daysBefore)
 import Ytm.Api.Video (channelVideos)
 import Ytm.App.State.Core
 import Ytm.App.Types
@@ -16,6 +15,7 @@ import Ytm.Download (download)
 import Ytm.FileSystem (deleteDownloaded)
 import Ytm.Play (play)
 import Ytm.Util.Persistence (dump)
+import Ytm.Util.Time (daysBefore)
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
 loadVideosH s = do
