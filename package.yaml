@@ -37,6 +37,7 @@ dependencies:
 - split
 - directory
 - async
+- strict
 
 library:
   source-dirs: src

@@ -53,6 +53,7 @@ library
     , lens-aeson
     , process
     , split
+    , strict
     , text
     , time
     , vector
@@ -81,6 +82,7 @@ executable ytm-exe
     , lens-aeson
     , process
     , split
+    , strict
     , text
     , time
     , vector
@@ -111,6 +113,7 @@ test-suite ytm-test
     , lens-aeson
     , process
     , split
+    , strict
     , text
     , time
     , vector

@@ -27,9 +27,9 @@ drawListItem :: Bool -> (Video, Int) -> Widget ResourceName
 drawListItem _ (v, w) = hBox [vTitle, chName, pubDate]
   where
     (ts : ns : ds : _) = toFractions [10, 4, 2] w
-    vTitle = toSize ts . str . videoTitle $ v
-    chName = toSize ns . str . channelName $ channel v
-    pubDate = toSize ds . str . showUTCTime "%R %b %d" . publishedAt $ v
+    vTitle = strFixed ts . videoTitle $ v
+    chName = strFixed ns . channelName $ channel v
+    pubDate = strFixed ds . showUTCTime "%R %b %d" . publishedAt $ v
 
 drawStatusLine :: State -> Widget ResourceName
 drawStatusLine s = hBox [str (sStatus s), hSpacer, str position, str (show $ sVideosLWidth s)]
@@ -46,6 +46,9 @@ drawHelpLine _ = hBox [help, hSpacer]
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '
 
+strFixed :: Int -> String -> Widget ResourceName
+strFixed n s = toSize n (str s)
+
 toSize :: Int -> Widget ResourceName -> Widget ResourceName
 toSize n = hLimit n . padRight Max
 
@@ -56,3 +59,6 @@ toFractions frs w = init res ++ [last res + offset]
     res = map calc frs
     tFrs = sum frs
     calc fr = floor $ fromIntegral fr / fromIntegral tFrs * fromIntegral w
+
+-- Create beautiful piano music with just 3 notes 🎹💐  (1 min piano lesson) #shorts
+-- How Romance Scammers Cheat You Out of Your Cash and Your Heart [Advertiser Content From Zelle®]

@@ -24,7 +24,9 @@ runApp = do
     c <- credentials
     writeBChan ch $ CredentialsLoaded c
 
-  initialVty <- V.mkVty V.defaultConfig
+  c <- V.userConfig
+  print $ V.termName c
+  initialVty <- V.mkVty c
   M.customMain initialVty (V.mkVty V.defaultConfig) (Just ch) app s
 
 app :: M.App State CustomEvent ResourceName

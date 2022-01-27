@@ -1,7 +1,9 @@
 module Ytm.Util.Persistence where
 
 import System.Directory (doesFileExist)
+import System.IO.Strict
 import Ytm.Api
+import Prelude hiding (readFile)
 
 dump :: (Show a) => FilePath -> a -> IO ()
 dump p = writeFile p . show
