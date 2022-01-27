@@ -13,6 +13,7 @@ import Text.Printf (printf)
 import Ytm.Api
 import Ytm.Api.Time
 import Ytm.App.Attr
+import Ytm.App.State
 import Ytm.App.Types
 
 draw :: State -> [Widget ResourceName]
@@ -54,11 +55,13 @@ drawListItem _ (i, w) = hBoxGapped 1 [progress, vTitle, chName, pubDate]
         Just p -> printf "%03.0f%%" p
 
 drawStatusLine :: State -> Widget ResourceName
-drawStatusLine s = hBox [str (sStatus s), hSpacer, str position]
+drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str vId, str position]]
   where
+    mVi = activeVideoItem s
     current = (+ 1) . fromMaybe (-1) . L.listSelected . sVideosL $ s
     total = length . sVideosL $ s
-    position = printf "%d/%d" current total
+    vId = maybe "" (videoId . itemVideo) mVi
+    position = printf "%3d/%3d" current total
 
 drawHelpLine :: State -> Widget ResourceName
 drawHelpLine _ = hBox [help, hSpacer]

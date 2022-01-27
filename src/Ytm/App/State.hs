@@ -22,7 +22,9 @@ import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Time (daysBefore)
 import Ytm.Api.Video (channelVideos)
 import Ytm.App.Types
+import Ytm.Download
 import Ytm.FileSystem
+import Ytm.Play
 import Ytm.Util.List
 import Ytm.Util.Persistence
 
@@ -50,7 +52,6 @@ initState ch =
     }
 
 -- TODO: check log
--- TODO: delete downloaded videos
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
@@ -72,6 +73,7 @@ handleEvent s e = case e of
     V.EvKey (V.KChar 'r') [] -> loadVideosH s
     V.EvKey (V.KChar 'd') [] -> downloadVideoH s
     V.EvKey (V.KChar 'x') [] -> deleteDownloadedH s
+    V.EvKey V.KEnter [] -> playH s
     V.EvResize _ _ -> resizeH s
     _ -> listEvent id
     where
@@ -157,7 +159,12 @@ videosLoadedH s = do
 videoDownloadedH :: VideoId -> FilePath -> State -> T.EventM ResourceName (T.Next State)
 videoDownloadedH vId vPath s = do
   sendChan (Log ("downloaded video: " ++ vPath) Info) s
-  M.continue $ updateVideoL (\i -> i {itemProgress = Just 100, itemStatus = Downloaded}) vId s
+  sendChan FsChanged s
+  M.continue $
+    updateVideoL
+      (\i -> i {itemProgress = Just 100, itemStatus = Downloaded})
+      vId
+      s
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
 loadVideosH s = do
@@ -190,23 +197,27 @@ downloadVideoH s = case mId of
     M.continue s'
   _ -> M.continue s
   where
-    mId = fmap (videoId . itemVideo . snd) . L.listSelectedElement . sVideosL $ s
+    mId = fmap (videoId . itemVideo) . activeVideoItem $ s
     logF (i, p, m) = sendChan (DownloadProgress i p m) s
 
 deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
-deleteDownloadedH s = case (mId, mSt) of
-  (Just vId, Just Downloaded) -> do
-    sendChan (Log ("video deleted: " ++ vId) Info) s
-    let dPath = downloadedPath . sSettings $ s
-    void . mapM (async . deleteDownloaded . (dPath ++)) . findFilename vId . sDownloadedFiles $ s
-    M.continue $ updateVideoL (\i -> i {itemStatus = Available}) vId s
-  _ -> do
-    M.continue s
+deleteDownloadedH s = do
+  mp <- liftIO $ activeFilePath s
+  case (mp, mId) of
+    (Just p, Just vId) -> do
+      sendChan (Log ("video deleted: " ++ vId) Info) s
+      async $ deleteDownloaded p
+      M.continue $ updateVideoL (\i -> i {itemStatus = Available, itemProgress = Nothing}) vId s
+    _ -> do
+      M.continue s
   where
-    mId = fmap (videoId . itemVideo . snd) . L.listSelectedElement . sVideosL $ s
-    mSt = fmap (itemStatus . snd) . L.listSelectedElement . sVideosL $ s
-    findFilename :: VideoId -> [FilePath] -> Maybe FilePath
-    findFilename vId files = maybeHead . filter (=~ (printf "^%s\\..*" vId :: String)) $ files
+    mId = fmap (videoId . itemVideo) . activeVideoItem $ s
+
+playH :: State -> T.EventM ResourceName (T.Next State)
+playH s = do
+  p <- liftIO . activeFilePath $ s
+  mapM_ (async . play) p
+  M.continue s
 
 downloadProgressH :: VideoId -> Maybe Progress -> String -> State -> T.EventM ResourceName (T.Next State)
 downloadProgressH vId mp _ s = M.continue case mp of
@@ -229,7 +240,6 @@ videoListWidth s = do
     Nothing -> return . sVideosLWidth $ s
     Just (T.Extent _ _ (width, _)) -> return width
 
--- TODO: refactor
 loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
 loadFromDump s = do
   mChs <- loadChannels (channelsDumpPath . sSettings $ s)
@@ -252,3 +262,19 @@ updateVideoL f vId s =
           . sVideosL
           $ s
     }
+
+activeVideoItem :: State -> Maybe VideoItem
+activeVideoItem = fmap snd . L.listSelectedElement . sVideosL
+
+activeFilePath :: State -> IO (Maybe FilePath)
+activeFilePath s = case (mId, mSt) of
+  (Just vId, Just Downloaded) -> do
+    let dPath = downloadedPath . sSettings $ s
+    return . fmap (dPath ++) . findFilename vId . sDownloadedFiles $ s
+  _ -> do
+    return Nothing
+  where
+    mId = fmap (videoId . itemVideo) . activeVideoItem $ s
+    mSt = fmap itemStatus . activeVideoItem $ s
+    findFilename :: VideoId -> [FilePath] -> Maybe FilePath
+    findFilename vId files = maybeHead . filter (=~ (printf "^%s\\..*" vId :: String)) $ files

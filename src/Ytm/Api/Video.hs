@@ -34,6 +34,7 @@ channelVideos = channelVideos' Nothing []
       where
         daysBP v = publishedAt v > daysB
 
+-- TODO: get video metadata (description, duration, view count)
 channelVideosPage :: Maybe PageToken -> Channel -> Credentials -> IO ([Video], Maybe PageToken)
 channelVideosPage npt ch c = do
   let opts =
