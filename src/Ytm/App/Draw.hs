@@ -32,7 +32,7 @@ drawListItem _ (v, w) = hBox [vTitle, chName, pubDate]
     pubDate = strFixed ds . showUTCTime "%R %b %d" . publishedAt $ v
 
 drawStatusLine :: State -> Widget ResourceName
-drawStatusLine s = hBox [str (sStatus s), hSpacer, str position, str (show $ sVideosLWidth s)]
+drawStatusLine s = hBox [str (sStatus s), hSpacer, str position]
   where
     current = (+ 1) . fromMaybe (-1) . L.listSelected . sVideosL $ s
     total = length . sVideosL $ s

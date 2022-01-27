@@ -8,7 +8,7 @@ import Control.Concurrent (forkIO)
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad (void, when)
 import Control.Monad.IO.Class
-import Data.List (sortOn)
+import Data.List (nub, sortOn)
 import Data.Maybe (fromJust, isJust)
 import qualified Data.Ord as O
 import qualified Data.Vector as Vec
@@ -95,7 +95,7 @@ handleChannelVideosLoaded :: [Video] -> State -> T.EventM ResourceName (T.Next S
 handleChannelVideosLoaded vs s =
   M.continue
     ( s
-        { sVideos = sVideos s ++ vs,
+        { sVideos = nub $ sVideos s ++ vs,
           sLoadedChannels = sLoadedChannels s + 1,
           sStatus = "loading videos from channels: " ++ countStr
         }
@@ -111,10 +111,7 @@ handleChannelVideosLoaded vs s =
 handleVideosLoaded :: State -> T.EventM ResourceName (T.Next State)
 handleVideosLoaded s = do
   dumpVs
-  e <- M.lookupExtent VideoList
-  w <- case e of
-    Nothing -> return . sVideosLWidth $ s
-    Just (T.Extent _ _ (width, _)) -> return width
+  w <- videoListWidth s
   M.continue (s {sVideosL = L.list VideoList (Vec.fromList sortVs) 1, sVideosLWidth = w})
   where
     sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
@@ -140,11 +137,15 @@ handleLoadVideos s = do
 
 handleResize :: State -> T.EventM ResourceName (T.Next State)
 handleResize s = do
+  w <- videoListWidth s
+  M.continue (s {sVideosLWidth = w})
+
+videoListWidth :: State -> T.EventM ResourceName Int
+videoListWidth s = do
   e <- M.lookupExtent VideoList
-  w <- case e of
+  case e of
     Nothing -> return . sVideosLWidth $ s
     Just (T.Extent _ _ (width, _)) -> return width
-  M.continue (s {sVideosLWidth = w})
 
 loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
 loadFromDump s = do
