@@ -13,7 +13,7 @@ import Text.Printf (printf)
 import Ytm.Api
 import Ytm.Api.Time
 import Ytm.App.Attr
-import Ytm.App.State
+import Ytm.App.State.Core
 import Ytm.App.Types
 
 draw :: State -> [Widget ResourceName]

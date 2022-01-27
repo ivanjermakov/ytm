@@ -32,6 +32,9 @@ library
       Ytm.App.Attr
       Ytm.App.Draw
       Ytm.App.State
+      Ytm.App.State.Control
+      Ytm.App.State.Core
+      Ytm.App.State.Custom
       Ytm.App.Types
       Ytm.Download
       Ytm.FileSystem

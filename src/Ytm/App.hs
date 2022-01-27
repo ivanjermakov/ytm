@@ -13,6 +13,7 @@ import Ytm.Api
 import Ytm.App.Attr (attrMap)
 import Ytm.App.Draw
 import Ytm.App.State
+import Ytm.App.State.Core
 import Ytm.App.Types
 
 runApp :: IO State
