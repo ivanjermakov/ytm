@@ -19,7 +19,12 @@ import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Time (daysBefore)
 import Ytm.Api.Video (channelVideos)
 import Ytm.App.Types
+import Ytm.Download
 import Ytm.Util.Persistence
+
+-- TODO: make configurable
+videoDestinationPath :: String
+videoDestinationPath = "/D/video/"
 
 initState :: BChan CustomEvent -> State
 initState ch =
@@ -43,27 +48,34 @@ initState ch =
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
-    (CredentialsLoaded c) -> handleCredentialsLoaded c s
-    DumpLoaded d -> handleDumpLoaded d s
-    (ChannelsLoaded chs) -> handleChannelsLoaded chs s
-    (ChannelVideosLoaded vs) -> handleChannelVideosLoaded vs s
-    VideosLoaded -> handleVideosLoaded s
+    (CredentialsLoaded c) -> credentialsLoadedH c s
+    DumpLoaded d -> dumpLoadedH d s
+    (ChannelsLoaded chs) -> channelsLoadedH chs s
+    (ChannelVideosLoaded vs) -> channelVideosLoadedH vs s
+    VideosLoaded -> videosLoadedH s
+    VideoDownloaded vPath -> videoDownloadedH vPath s
+    (LogInfo m) -> logInfoH m s
+    (LogWarn m) -> logWarnH m s
+    (LogError m) -> logErrorH m s
   T.VtyEvent k -> case k of
     V.EvKey (V.KChar 'q') [] -> M.halt s
-    V.EvKey (V.KChar 'i') [] -> moveBy (-1)
-    V.EvKey (V.KChar 'k') [] -> moveBy 1
-    V.EvKey (V.KChar 'r') [] -> handleLoadVideos s
-    V.EvResize _ _ -> handleResize s
-    _ -> handleL
+    V.EvKey (V.KChar 'i') [] -> listEvent $ L.listMoveBy (-1)
+    V.EvKey (V.KChar 'k') [] -> listEvent $ L.listMoveBy 1
+    V.EvKey (V.KChar 'g') [] -> listEvent L.listMoveToBeginning
+    V.EvKey (V.KChar 'G') [] -> listEvent L.listMoveToEnd
+    V.EvKey (V.KChar 'r') [] -> loadVideosH s
+    V.EvKey (V.KChar 'd') [] -> downloadVideoH s
+    V.EvResize _ _ -> resizeH s
+    _ -> listEventH
     where
-      moveBy n = M.continue . (\l -> s {sVideosL = l}) . L.listMoveBy n =<< L.handleListEvent k (sVideosL s)
-      handleL = M.continue . (\l -> s {sVideosL = l}) =<< L.handleListEvent k (sVideosL s)
+      listEvent f = M.continue . (\l -> s {sVideosL = l}) . f =<< L.handleListEvent k (sVideosL s)
+      listEventH = M.continue . (\l -> s {sVideosL = l}) =<< L.handleListEvent k (sVideosL s)
 
-handleCredentialsLoaded :: Credentials -> State -> T.EventM ResourceName (T.Next State)
-handleCredentialsLoaded c s = do
-  void . liftIO . forkIO $ do
+credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
+credentialsLoadedH c s = do
+  async $ do
     l <- loadFromDump s
-    when (isJust l) $ writeBChan (bChan s) (DumpLoaded $ fromJust l)
+    when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s
   M.continue
     ( s
         { sCredentials = Just c,
@@ -71,9 +83,9 @@ handleCredentialsLoaded c s = do
         }
     )
 
-handleDumpLoaded :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
-handleDumpLoaded (chs, vs) s = do
-  liftIO $ writeBChan (bChan s) VideosLoaded
+dumpLoadedH :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
+dumpLoadedH (chs, vs) s = do
+  sendChan VideosLoaded s
   M.continue
     ( s
         { sChannels = chs,
@@ -82,8 +94,8 @@ handleDumpLoaded (chs, vs) s = do
         }
     )
 
-handleChannelsLoaded :: [Channel] -> State -> T.EventM ResourceName (T.Next State)
-handleChannelsLoaded chs s =
+channelsLoadedH :: [Channel] -> State -> T.EventM ResourceName (T.Next State)
+channelsLoadedH chs s =
   M.continue
     ( s
         { sChannels = chs,
@@ -91,8 +103,8 @@ handleChannelsLoaded chs s =
         }
     )
 
-handleChannelVideosLoaded :: [Video] -> State -> T.EventM ResourceName (T.Next State)
-handleChannelVideosLoaded vs s =
+channelVideosLoadedH :: [Video] -> State -> T.EventM ResourceName (T.Next State)
+channelVideosLoadedH vs s =
   M.continue
     ( s
         { sVideos = nub $ sVideos s ++ vs,
@@ -108,8 +120,8 @@ handleChannelVideosLoaded vs s =
         (length (sChannels s))
         (length (sVideos s))
 
-handleVideosLoaded :: State -> T.EventM ResourceName (T.Next State)
-handleVideosLoaded s = do
+videosLoadedH :: State -> T.EventM ResourceName (T.Next State)
+videosLoadedH s = do
   dumpVs
   w <- videoListWidth s
   M.continue (s {sVideosL = L.list VideoList (Vec.fromList sortVs) 1, sVideosLWidth = w})
@@ -117,26 +129,57 @@ handleVideosLoaded s = do
     sortVs = sortOn (O.Down . publishedAt) . sVideos $ s
     dumpVs = liftIO $ dump (videosDumpPath . sSettings $ s) (sVideos s)
 
-handleLoadVideos :: State -> T.EventM ResourceName (T.Next State)
-handleLoadVideos s = do
+videoDownloadedH :: FilePath -> State -> T.EventM ResourceName (T.Next State)
+videoDownloadedH vPath s = do
+  sendChan (LogInfo $ "downloaded video: " ++ vPath) s
+  M.continue s
+
+loadVideosH :: State -> T.EventM ResourceName (T.Next State)
+loadVideosH s = do
   let ns = (s {sStatus = "refreshing videos"})
       c = fromJust . sCredentials $ s
-  void . liftIO . forkIO $ do
+  async $ do
     chs <- subscriptions c
     dumpChs chs
-    writeBChan (bChan s) (ChannelsLoaded chs)
+    sendChan (ChannelsLoaded chs) s
     void $ mapConcurrently (chLoaded c) chs
-    writeBChan (bChan s) VideosLoaded
+    sendChan VideosLoaded s
   M.continue ns
   where
     dumpChs = dump (channelsDumpPath . sSettings $ s)
     chLoaded c ch = do
       db <- daysBefore (fetchDays . sSettings $ s)
       cVs <- channelVideos db ch c
-      writeBChan (bChan s) (ChannelVideosLoaded cVs)
+      sendChan (ChannelVideosLoaded cVs) s
 
-handleResize :: State -> T.EventM ResourceName (T.Next State)
-handleResize s = do
+downloadVideoH :: State -> T.EventM ResourceName (T.Next State)
+downloadVideoH s = case mId of
+  Nothing -> do
+    sendChan (LogWarn "no selected video to download") s
+    M.continue s
+  Just vId -> do
+    async $ do
+      res <- download vId videoDestinationPath logF
+      case res of
+        Nothing -> return ()
+        Just vPath -> sendChan (VideoDownloaded vPath) s
+    M.continue s
+  where
+    mId = fmap (videoId . snd) . L.listSelectedElement . sVideosL $ s
+    logF m = sendChan (LogInfo m) s
+
+logInfoH :: String -> State -> T.EventM ResourceName (T.Next State)
+logInfoH m s = M.continue $ s {sStatus = m}
+
+-- TODO: styling
+logWarnH :: String -> State -> T.EventM ResourceName (T.Next State)
+logWarnH m s = M.continue $ s {sStatus = m}
+
+logErrorH :: String -> State -> T.EventM ResourceName (T.Next State)
+logErrorH m s = M.continue $ s {sStatus = m}
+
+resizeH :: State -> T.EventM ResourceName (T.Next State)
+resizeH s = do
   w <- videoListWidth s
   M.continue (s {sVideosLWidth = w})
 
@@ -154,3 +197,9 @@ loadFromDump s = do
   case (mChs, mVs) of
     (Just chs, Just vs) -> return $ Just (chs, vs)
     _ -> return Nothing
+
+sendChan :: (MonadIO m) => CustomEvent -> State -> m ()
+sendChan e s = liftIO $ writeBChan (bChan s) e
+
+async :: (MonadIO m) => IO () -> m ()
+async = void . liftIO . forkIO

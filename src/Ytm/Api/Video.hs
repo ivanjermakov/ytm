@@ -16,7 +16,6 @@ import Ytm.Api
 import qualified Ytm.Api.Channel as C
 import Ytm.Api.Time
 
--- TODO: save/read videos from a file
 subscriptionsVideos :: UTCTime -> Credentials -> IO [Video]
 subscriptionsVideos publishedAfter c = do
   chs <- C.subscriptions c

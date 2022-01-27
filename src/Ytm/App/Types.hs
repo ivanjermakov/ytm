@@ -29,6 +29,10 @@ data CustomEvent
   | ChannelsLoaded [Channel]
   | ChannelVideosLoaded [Video]
   | VideosLoaded
+  | VideoDownloaded FilePath
+  | LogInfo String
+  | LogWarn String
+  | LogError String
   deriving (Show)
 
 data ResourceName = VideoList

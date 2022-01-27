@@ -19,7 +19,7 @@ data Credentials = Credentials
   deriving (Show)
 
 data Channel = Channel
-  { channelId :: String,
+  { channelId :: ChannelId,
     channelName :: String,
     channelUploadsPlaylistId :: PlaylistId
   }
@@ -27,13 +27,15 @@ data Channel = Channel
 
 data Video = Video
   { channel :: Channel,
-    videoId :: String,
+    videoId :: VideoId,
     publishedAt :: UTCTime,
     videoTitle :: String
   }
   deriving (Show, Read, Eq, Ord)
 
 type PageToken = String
+
+type VideoId = String
 
 type ChannelId = String
 

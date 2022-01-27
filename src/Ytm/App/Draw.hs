@@ -41,7 +41,7 @@ drawStatusLine s = hBox [str (sStatus s), hSpacer, str position]
 drawHelpLine :: State -> Widget ResourceName
 drawHelpLine _ = hBox [help, hSpacer]
   where
-    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(f1) help", "(r) refresh", "(d) download", "(r) remove"]
+    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(f1) help", "(r) refresh", "(d) download", "(x) remove"]
 
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '
