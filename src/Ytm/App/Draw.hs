@@ -17,7 +17,7 @@ import Ytm.App.Types
 import Ytm.Util.Time
 
 draw :: State -> [Widget ResourceName]
-draw s = [vBox [header, hBox [vBox [main, hl, sl]]]]
+draw s = [vBox [header, main, hSpacer, hl, sl]]
   where
     w = sVideosLWidth s
     header = drawListHeader w
@@ -28,31 +28,37 @@ draw s = [vBox [header, hBox [vBox [main, hl, sl]]]]
     sl = drawStatusLine s
 
 listRatios :: [Float]
-listRatios = [1, 10, 4, 2]
+listRatios = [0.5, 1.5, 10, 4, 2]
 
 drawListHeader :: Int -> Widget ResourceName
 drawListHeader w =
   hBoxGapped 1 $
     map
-      (withAttr secondaryTextAttr . uncurry strFixed)
-      [(ps, "s"), (ts, "title"), (ns, "channel"), (ds, "date")]
+      (uncurry (withAttr secondaryTextAttr .))
+      [ (strFixedRight ps, "s"),
+        (strFixedLeft dus, "duration"),
+        (strFixedRight ts, "title"),
+        (strFixedRight ns, "channel"),
+        (strFixedRight ds, "date")
+      ]
   where
-    (ps : ts : ns : ds : _) = toFractions listRatios (w - 1)
+    (ps : dus : ts : ns : ds : _) = toFractions listRatios (w - 4)
 
 drawListItem :: Bool -> (VideoItem, Int) -> Widget ResourceName
-drawListItem _ (i, w) = hBoxGapped 1 [progress, vTitle, chName, pubDate]
+drawListItem _ (i, w) = hBoxGapped 1 [progress, dur, vTitle, chName, pubDate]
   where
-    (ps : ts : ns : ds : _) = toFractions listRatios (w - 1)
+    (ps : dus : ts : ns : ds : _) = toFractions listRatios (w - 4)
     v = itemVideo i
-    vTitle = strFixed ts . videoTitle $ v
-    chName = strFixed ns . channelName $ channel v
-    pubDate = strFixed ds . showUTCTime "%R %b %d" . publishedAt $ v
-    progress = strFixed ps case itemStatus i of
+    dur = strFixedLeft dus . showTime "%_mm:%0Ss" . videoDuration $ v
+    vTitle = strFixedRight ts . videoTitle $ v
+    chName = strFixedRight ns . channelName $ channel v
+    pubDate = strFixedRight ds . showTime "%R %b %d" . publishedAt $ v
+    progress = strFixedRight ps case itemStatus i of
       Available -> ""
       Downloaded -> "D"
       Downloading -> case itemProgress i of
         Nothing -> "D~~"
-        Just p -> printf "%03.0f%%" p
+        Just p -> printf "%_3.0f%%" p
 
 drawStatusLine :: State -> Widget ResourceName
 drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str vId, str position]]
@@ -61,7 +67,7 @@ drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str vId, str po
     current = (+ 1) . fromMaybe (-1) . L.listSelected . sVideosL $ s
     total = length . sVideosL $ s
     vId = maybe "" (videoId . itemVideo) mVi
-    position = printf "%3d/%3d" current total
+    position = printf "%d/%d" current total
 
 drawHelpLine :: State -> Widget ResourceName
 drawHelpLine _ = hBox [help, hSpacer]
@@ -74,8 +80,14 @@ hSpacer = vLimit 1 $ fill ' '
 padStrRight :: Int -> String -> String
 padStrRight n s = s ++ replicate (n - length s) ' '
 
-strFixed :: Int -> String -> Widget ResourceName
-strFixed n s = toSize n (str . padStrRight n $ s)
+strFixedRight :: Int -> String -> Widget ResourceName
+strFixedRight n s = toSize n (str . padStrRight n $ s)
+
+padStrLeft :: Int -> String -> String
+padStrLeft n s = replicate (n - length s) ' ' ++ s
+
+strFixedLeft :: Int -> String -> Widget ResourceName
+strFixedLeft n s = toSize n (str . padStrLeft n $ s)
 
 toSize :: Int -> Widget ResourceName -> Widget ResourceName
 toSize n = hLimit n . padRight Max

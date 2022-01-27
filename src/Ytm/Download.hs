@@ -9,6 +9,7 @@ import Text.Regex.PCRE
 import Ytm.Api
 
 -- TODO: configurable downloader
+-- TODO: configure sponsorblock
 download :: VideoId -> FilePath -> ((VideoId, Maybe Float, String) -> IO ()) -> IO (Maybe FilePath)
 download vId p hL = do
   (_, Just stdout, _, _) <- createProcess (shell cmd) {std_out = CreatePipe}
