@@ -20,3 +20,7 @@ mergeDropUnmatched mf ff as bs = zipWith mf na nb
     find e ls = case filter (ff e) ls of
       h : _ -> Just h
       _ -> Nothing
+
+maybeHead :: [a] -> Maybe a
+maybeHead (l : _) = Just l
+maybeHead [] = Nothing

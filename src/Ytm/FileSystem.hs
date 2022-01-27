@@ -1,7 +1,7 @@
-module Ytm.Download where
+module Ytm.FileSystem where
 
 import Control.Monad (void)
-import System.Directory (listDirectory)
+import System.Directory (listDirectory, removeFile)
 import System.IO (hGetContents)
 import System.Process
 import Text.Printf (printf)
@@ -24,3 +24,6 @@ download vId p hL = do
 
 listDownloadedFiles :: FilePath -> IO [FilePath]
 listDownloadedFiles = listDirectory
+
+deleteDownloaded :: FilePath -> IO ()
+deleteDownloaded = removeFile

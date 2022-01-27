@@ -10,5 +10,4 @@ main = do
   _ <- C.loadFile C.defaultConfig
   s <- runApp
   _ <- mapM (\(l, m) -> putStrLn $ printf "[%s] %s" (show l) m) . sLog $ s
-  print . fmap itemStatus . sVideosL $ s
   return ()

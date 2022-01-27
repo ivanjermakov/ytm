@@ -33,7 +33,7 @@ library
       Ytm.App.Draw
       Ytm.App.State
       Ytm.App.Types
-      Ytm.Download
+      Ytm.FileSystem
       Ytm.Util.List
       Ytm.Util.Persistence
   other-modules:

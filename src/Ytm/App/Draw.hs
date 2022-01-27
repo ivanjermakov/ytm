@@ -30,7 +30,11 @@ listRatios :: [Float]
 listRatios = [1, 10, 4, 2]
 
 drawListHeader :: Int -> Widget ResourceName
-drawListHeader w = hBoxGapped 1 [strFixed ps "s", strFixed ts "title", strFixed ns "channel", strFixed ds "date"]
+drawListHeader w =
+  hBoxGapped 1 $
+    map
+      (withAttr secondaryTextAttr . uncurry strFixed)
+      [(ps, "s"), (ts, "title"), (ns, "channel"), (ds, "date")]
   where
     (ps : ts : ns : ds : _) = toFractions listRatios (w - 1)
 
@@ -59,7 +63,7 @@ drawStatusLine s = hBox [str (sStatus s), hSpacer, str position]
 drawHelpLine :: State -> Widget ResourceName
 drawHelpLine _ = hBox [help, hSpacer]
   where
-    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(f1) help", "(r) refresh", "(d) download", "(x) remove"]
+    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(r) refresh", "(d) download", "(x) remove"]
 
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '

@@ -22,7 +22,8 @@ import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Time (daysBefore)
 import Ytm.Api.Video (channelVideos)
 import Ytm.App.Types
-import Ytm.Download
+import Ytm.FileSystem
+import Ytm.Util.List
 import Ytm.Util.Persistence
 
 initState :: BChan CustomEvent -> State
@@ -70,6 +71,7 @@ handleEvent s e = case e of
     V.EvKey (V.KChar 'G') [] -> listEvent L.listMoveToEnd
     V.EvKey (V.KChar 'r') [] -> loadVideosH s
     V.EvKey (V.KChar 'd') [] -> downloadVideoH s
+    V.EvKey (V.KChar 'x') [] -> deleteDownloadedH s
     V.EvResize _ _ -> resizeH s
     _ -> listEventH
     where
@@ -178,9 +180,6 @@ loadVideosH s = do
 
 downloadVideoH :: State -> T.EventM ResourceName (T.Next State)
 downloadVideoH s = case mId of
-  Nothing -> do
-    sendChan (Log "no selected video to download" Info) s
-    M.continue s
   Just vId -> do
     let s' = updateVideoL (\i -> i {itemStatus = Downloading}) vId s
     sendChan (Log ("downloading video: " ++ vId) Info) s'
@@ -190,9 +189,25 @@ downloadVideoH s = case mId of
         Nothing -> return ()
         Just vPath -> sendChan (VideoDownloaded vId vPath) s'
     M.continue s'
+  _ -> M.continue s
   where
     mId = fmap (videoId . itemVideo . snd) . L.listSelectedElement . sVideosL $ s
     logF (i, p, m) = sendChan (DownloadProgress i p m) s
+
+deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
+deleteDownloadedH s = case (mId, mSt) of
+  (Just vId, Just Downloaded) -> do
+    sendChan (Log ("video deleted: " ++ vId) Info) s
+    let dPath = downloadedPath . sSettings $ s
+    void . mapM (async . deleteDownloaded . (dPath ++)) . findFilename vId . sDownloadedFiles $ s
+    M.continue $ updateVideoL (\i -> i {itemStatus = Available}) vId s
+  _ -> do
+    M.continue s
+  where
+    mId = fmap (videoId . itemVideo . snd) . L.listSelectedElement . sVideosL $ s
+    mSt = fmap (itemStatus . snd) . L.listSelectedElement . sVideosL $ s
+    findFilename :: VideoId -> [FilePath] -> Maybe FilePath
+    findFilename vId files = maybeHead . filter (=~ (printf "^%s\\..*" vId :: String)) $ files
 
 downloadProgressH :: VideoId -> Maybe Progress -> String -> State -> T.EventM ResourceName (T.Next State)
 downloadProgressH vId mp _ s = M.continue case mp of
