@@ -1,12 +1,13 @@
 module Ytm.Download where
 
 import Control.Monad (void)
+import System.Directory (listDirectory)
 import System.IO (hGetContents)
 import System.Process
 import Text.Printf (printf)
+import Text.Read (readMaybe)
 import Text.Regex.PCRE
 import Ytm.Api
-import Text.Read (readMaybe)
 
 -- TODO: configurable downloader
 download :: VideoId -> FilePath -> ((VideoId, Maybe Float, String) -> IO ()) -> IO (Maybe FilePath)
@@ -20,3 +21,6 @@ download vId p hL = do
   where
     cmd = printf "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate" vId p
     rx = "(\\d+\\.?\\d*)(?=%)"
+
+listDownloadedFiles :: FilePath -> IO [FilePath]
+listDownloadedFiles = listDirectory

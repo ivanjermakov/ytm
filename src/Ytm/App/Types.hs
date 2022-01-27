@@ -14,6 +14,7 @@ data State = State
     sVideos :: [Video],
     sVideosL :: L.List ResourceName VideoItem,
     sVideosLWidth :: Int,
+    sDownloadedFiles :: [FilePath],
     sLog :: [(LogLevel, String)]
   }
 
@@ -33,7 +34,8 @@ data LogLevel = Info | Warn | Error
 data Settings = Settings
   { fetchDays :: Int,
     videosDumpPath :: FilePath,
-    channelsDumpPath :: FilePath
+    channelsDumpPath :: FilePath,
+    downloadedPath :: FilePath
   }
   deriving (Show)
 
@@ -46,6 +48,7 @@ data CustomEvent
   | VideoDownloaded VideoId FilePath
   | DownloadProgress VideoId (Maybe Progress) String
   | Log String LogLevel
+  | FsChanged
   deriving (Show)
 
 data ResourceName = VideoList

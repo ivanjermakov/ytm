@@ -3,7 +3,7 @@
 
 module Ytm.App where
 
-import Brick.BChan (newBChan, writeBChan)
+import Brick.BChan (newBChan)
 import qualified Brick.Main as M
 import qualified Brick.Types as T
 import Control.Concurrent (forkIO)
@@ -22,7 +22,7 @@ runApp = do
 
   void . forkIO $ do
     c <- credentials
-    writeBChan ch $ CredentialsLoaded c
+    sendChan (CredentialsLoaded c) s
 
   c <- V.userConfig
   initialVty <- V.mkVty c

@@ -16,6 +16,7 @@ import qualified Data.Ord as O
 import qualified Data.Vector as Vec
 import qualified Graphics.Vty as V
 import Text.Printf (printf)
+import Text.Regex.PCRE.Wrap
 import Ytm.Api
 import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Time (daysBefore)
@@ -24,18 +25,16 @@ import Ytm.App.Types
 import Ytm.Download
 import Ytm.Util.Persistence
 
--- TODO: make configurable
-videoDestinationPath :: String
-videoDestinationPath = "/D/video/"
-
 initState :: BChan CustomEvent -> State
 initState ch =
   State
     { sSettings =
+        -- TODO: make configurable
         Settings
           { fetchDays = 4,
             videosDumpPath = ".cache/videos.dump",
-            channelsDumpPath = ".cache/channels.dump"
+            channelsDumpPath = ".cache/channels.dump",
+            downloadedPath = "/D/video/"
           },
       bChan = ch,
       sStatus = "",
@@ -45,14 +44,17 @@ initState ch =
       sVideos = [],
       sVideosL = L.list VideoList (Vec.fromList []) 1,
       sVideosLWidth = 0,
+      sDownloadedFiles = [],
       sLog = []
     }
 
 -- TODO: check log
+-- TODO: delete downloaded videos
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
     (CredentialsLoaded c) -> credentialsLoadedH c s
+    FsChanged -> fsChangedH s
     DumpLoaded d -> dumpLoadedH d s
     (ChannelsLoaded chs) -> channelsLoadedH chs s
     (ChannelVideosLoaded vs) -> channelVideosLoadedH vs s
@@ -82,6 +84,28 @@ credentialsLoadedH c s = do
     when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s
   M.continue (s {sCredentials = Just c})
 
+fsChangedH :: State -> T.EventM ResourceName (T.Next State)
+fsChangedH s = do
+  files <- liftIO . listDownloadedFiles . downloadedPath . sSettings $ s
+  M.continue $
+    s
+      { sDownloadedFiles = files,
+        sVideosL =
+          -- TODO: treat part files
+          fmap
+            ( \i ->
+                if isDownloaded files . videoId . itemVideo $ i
+                  then i {itemProgress = Just 100, itemStatus = Downloaded}
+                  else i
+            )
+            . sVideosL
+            $ s
+      }
+  where
+    isDownloaded files vId = any (`match` vId) files
+    match :: FilePath -> VideoId -> Bool
+    match f vId = f =~ (printf "^%s\\..*" vId :: String)
+
 dumpLoadedH :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
 dumpLoadedH (chs, vs) s = do
   sendChan VideosLoaded s
@@ -89,7 +113,7 @@ dumpLoadedH (chs, vs) s = do
     ( s
         { sChannels = chs,
           sVideos = vs,
-          sStatus = "videos loaded from cache DATE"
+          sStatus = "videos loaded from cache"
         }
     )
 
@@ -123,6 +147,7 @@ videosLoadedH :: State -> T.EventM ResourceName (T.Next State)
 videosLoadedH s = do
   dumpVs
   w <- videoListWidth s
+  sendChan FsChanged s
   M.continue (s {sVideosL = L.list VideoList (Vec.fromList vItems) 1, sVideosLWidth = w})
   where
     vItems = map (\v -> VideoItem v Nothing Available) . sortOn (O.Down . publishedAt) . sVideos $ s
@@ -160,7 +185,7 @@ downloadVideoH s = case mId of
     let s' = updateVideoL (\i -> i {itemStatus = Downloading}) vId s
     sendChan (Log ("downloading video: " ++ vId) Info) s'
     async $ do
-      res <- download vId videoDestinationPath logF
+      res <- download vId (downloadedPath . sSettings $ s) logF
       case res of
         Nothing -> return ()
         Just vPath -> sendChan (VideoDownloaded vId vPath) s'
@@ -190,6 +215,7 @@ videoListWidth s = do
     Nothing -> return . sVideosLWidth $ s
     Just (T.Extent _ _ (width, _)) -> return width
 
+-- TODO: refactor
 loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
 loadFromDump s = do
   mChs <- loadChannels (channelsDumpPath . sSettings $ s)
