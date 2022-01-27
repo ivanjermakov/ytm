@@ -38,6 +38,7 @@ dependencies:
 - directory
 - async
 - strict
+- regex-pcre
 
 library:
   source-dirs: src

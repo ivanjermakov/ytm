@@ -13,8 +13,12 @@ data State = State
     sLoadedChannels :: Int,
     sVideos :: [Video],
     sVideosL :: L.List ResourceName Video,
-    sVideosLWidth :: Int
+    sVideosLWidth :: Int,
+    sLog :: [(LogLevel, String)]
   }
+
+data LogLevel = INFO | WARN | ERROR
+  deriving (Show, Read, Eq, Ord)
 
 data Settings = Settings
   { fetchDays :: Int,
@@ -30,9 +34,7 @@ data CustomEvent
   | ChannelVideosLoaded [Video]
   | VideosLoaded
   | VideoDownloaded FilePath
-  | LogInfo String
-  | LogWarn String
-  | LogError String
+  | Log String LogLevel
   deriving (Show)
 
 data ResourceName = VideoList

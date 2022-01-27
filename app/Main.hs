@@ -1,11 +1,13 @@
 module Main where
 
 import qualified Configuration.Dotenv as C
-import Ytm.Api
+import Text.Printf (printf)
 import Ytm.App
+import Ytm.App.Types
 
 main :: IO ()
 main = do
   _ <- C.loadFile C.defaultConfig
-  _ <- runApp
+  s <- runApp
+  _ <- mapM (\(l, m) -> putStrLn $ printf "[%s] %s" (show l) m) . sLog $ s
   return ()

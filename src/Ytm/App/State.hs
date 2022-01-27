@@ -36,15 +36,17 @@ initState ch =
             channelsDumpPath = ".cache/channels.dump"
           },
       bChan = ch,
-      sStatus = "ytm started",
+      sStatus = "",
       sCredentials = Nothing,
       sChannels = [],
       sLoadedChannels = 0,
       sVideos = [],
       sVideosL = L.list VideoList (Vec.fromList []) 1,
-      sVideosLWidth = 0
+      sVideosLWidth = 0,
+      sLog = []
     }
 
+-- TODO: check log
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
@@ -54,9 +56,7 @@ handleEvent s e = case e of
     (ChannelVideosLoaded vs) -> channelVideosLoadedH vs s
     VideosLoaded -> videosLoadedH s
     VideoDownloaded vPath -> videoDownloadedH vPath s
-    (LogInfo m) -> logInfoH m s
-    (LogWarn m) -> logWarnH m s
-    (LogError m) -> logErrorH m s
+    (Log m l) -> logH m l s
   T.VtyEvent k -> case k of
     V.EvKey (V.KChar 'q') [] -> M.halt s
     V.EvKey (V.KChar 'i') [] -> listEvent $ L.listMoveBy (-1)
@@ -73,15 +73,11 @@ handleEvent s e = case e of
 
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
+  sendChan (Log "credentials loaded" INFO) s
   async $ do
     l <- loadFromDump s
     when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s
-  M.continue
-    ( s
-        { sCredentials = Just c,
-          sStatus = "credentials loaded"
-        }
-    )
+  M.continue (s {sCredentials = Just c})
 
 dumpLoadedH :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
 dumpLoadedH (chs, vs) s = do
@@ -131,7 +127,7 @@ videosLoadedH s = do
 
 videoDownloadedH :: FilePath -> State -> T.EventM ResourceName (T.Next State)
 videoDownloadedH vPath s = do
-  sendChan (LogInfo $ "downloaded video: " ++ vPath) s
+  sendChan (Log ("downloaded video: " ++ vPath) INFO) s
   M.continue s
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
@@ -155,7 +151,7 @@ loadVideosH s = do
 downloadVideoH :: State -> T.EventM ResourceName (T.Next State)
 downloadVideoH s = case mId of
   Nothing -> do
-    sendChan (LogWarn "no selected video to download") s
+    sendChan (Log "no selected video to download" INFO) s
     M.continue s
   Just vId -> do
     async $ do
@@ -166,17 +162,11 @@ downloadVideoH s = case mId of
     M.continue s
   where
     mId = fmap (videoId . snd) . L.listSelectedElement . sVideosL $ s
-    logF m = sendChan (LogInfo m) s
-
-logInfoH :: String -> State -> T.EventM ResourceName (T.Next State)
-logInfoH m s = M.continue $ s {sStatus = m}
+    logF (i, p, m) = sendChan (Log (unwords [i, show p ++ "%", m]) INFO) s
 
 -- TODO: styling
-logWarnH :: String -> State -> T.EventM ResourceName (T.Next State)
-logWarnH m s = M.continue $ s {sStatus = m}
-
-logErrorH :: String -> State -> T.EventM ResourceName (T.Next State)
-logErrorH m s = M.continue $ s {sStatus = m}
+logH :: String -> LogLevel -> State -> T.EventM ResourceName (T.Next State)
+logH m l s = M.continue $ s {sStatus = m, sLog = sLog s ++ [(l, m)]}
 
 resizeH :: State -> T.EventM ResourceName (T.Next State)
 resizeH s = do

@@ -25,7 +25,6 @@ runApp = do
     writeBChan ch $ CredentialsLoaded c
 
   c <- V.userConfig
-  print $ V.termName c
   initialVty <- V.mkVty c
   M.customMain initialVty (V.mkVty V.defaultConfig) (Just ch) app s
 
