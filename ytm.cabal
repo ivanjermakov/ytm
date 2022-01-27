@@ -63,7 +63,7 @@ library
     , wreq
   default-language: Haskell2010
 
-executable ytm-exe
+executable ytm
   main-is: Main.hs
   other-modules:
       Paths_ytm

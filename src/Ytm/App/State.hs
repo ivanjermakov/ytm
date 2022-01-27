@@ -73,10 +73,9 @@ handleEvent s e = case e of
     V.EvKey (V.KChar 'd') [] -> downloadVideoH s
     V.EvKey (V.KChar 'x') [] -> deleteDownloadedH s
     V.EvResize _ _ -> resizeH s
-    _ -> listEventH
+    _ -> listEvent id
     where
       listEvent f = M.continue . (\l -> s {sVideosL = l}) . f =<< L.handleListEvent k (sVideosL s)
-      listEventH = M.continue . (\l -> s {sVideosL = l}) =<< L.handleListEvent k (sVideosL s)
 
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do

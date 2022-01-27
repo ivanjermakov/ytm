@@ -1,16 +1,37 @@
 # ytm
 
-## Install
+YouTube video manager TUI
+
+## Setup
 
 ### Required programs
 
 - Stack
-- [yq](https://github.com/kislyuk/yq) (xml parsing)
 - curl
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 
-## Setup
+### Running
 
-### Obtaining `ACCESS_TOKEN`
+1. `git clone https://github.com/ivanjermakov/ytm`
+2. Create file `~/.config/ytm/.env`:
+
+    ```
+    API_KEY=
+    CLIENT_ID=
+    CLIENT_SECRET=
+    REFRESH_TOKEN=
+    ```
+
+4. `stack build`
+
+### Obtaining API credentials
+
+#### Obtaining `API_KEY`, `CLIENT_ID`, `CLIENT_SECRET`
+
+You have to create a project in a [Google Cloud Console](https://console.cloud.google.com/). More
+details [here](https://developers.google.com/youtube/registering_an_application).
+
+#### Obtaining `REFRESH_TOKEN`
 
 You need to have `CLIENT_ID` and `CLIENT_SECRET` obtained before.
 
@@ -19,7 +40,7 @@ You need to have `CLIENT_ID` and `CLIENT_SECRET` obtained before.
     https://accounts.google.com/o/oauth2/v2/auth?client_id=CLIENT_ID&redirect_uri=urn:ietf:wg:oauth:2.0:oob&scope=https://www.googleapis.com/auth/youtube&response_type=code
     ```
 
-2. Request `ACCESS_TOKEN` with `CODE`, `CLIENT_ID` and `CLIENT_SECRET`
+2. Request `REFRESH_TOKEN` with `CODE`, `CLIENT_ID` and `CLIENT_SECRET`
     ```
     curl -s \
     --request POST \
