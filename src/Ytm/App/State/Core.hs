@@ -58,14 +58,16 @@ selectedVideoItems s = case sSelectMode s of
   Just sm -> map snd . filter (\(i, _) -> inRange i sm) . zip [0 :: Int ..] . Vec.toList . L.listElements . sVideosL $ s
 
 selectedFilePaths :: State -> IO [FilePath]
-selectedFilePaths s = return . mapMaybe f $ vis
+selectedFilePaths s = return . mapMaybe (`filePath` s) $ vis
   where
     vis = selectedVideoItems s
-    f vi = do
-      fmap (dPath ++) . findFilename (videoId . itemVideo $ vi) . sDownloadedFiles $ s
-    dPath = downloadedPath . fromJust . sSettings $ s
+
+filePath :: VideoItem -> State -> Maybe FilePath
+filePath vi s = fmap (dPath ++) . findFilename (videoId . itemVideo $ vi) . sDownloadedFiles $ s
+  where
     findFilename :: VideoId -> [FilePath] -> Maybe FilePath
     findFilename vId files = find (=~ (printf "^%s\\..*" vId :: String)) files
+    dPath = downloadedPath . fromJust . sSettings $ s
 
 activeFilePath :: State -> IO (Maybe FilePath)
 activeFilePath s = case (mId, mSt) of

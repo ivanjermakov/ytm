@@ -66,6 +66,7 @@ drawListItem ix _ (i, s) = applySelAttr itemBox
         Just p -> printf "%.0f%%" p
 
 -- TODO: downloading videos stats
+-- TODO: network usage indicator
 drawStatusLine :: State -> Widget ResourceName
 drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str sMode, str vId, str position]]
   where

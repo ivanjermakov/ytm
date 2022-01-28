@@ -21,7 +21,6 @@ import Ytm.Util.Persistence
 
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
-  sendChan (Log "credentials loaded" Info) s
   M.continue (s {sCredentials = Just c})
 
 settingsLoadedH :: Settings -> State -> T.EventM ResourceName (T.Next State)
@@ -29,62 +28,48 @@ settingsLoadedH settings s = do
   sendChan (Log "settings loaded" Info) s'
   async $ do
     l <- loadFromDump s'
-    when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s'
+    when (isJust l) do
+      sendChan (DumpLoaded $ fromJust l) s'
+      sendChan FsChanged s'
   M.continue s'
   where
     s' = s {sSettings = Just settings}
 
+-- TODO: treat being downloaded (part) files
 fsChangedH :: State -> T.EventM ResourceName (T.Next State)
 fsChangedH s = do
   files <- liftIO . listDownloadedFiles . downloadedPath . fromJust . sSettings $ s
-  M.continue $
-    s
-      { sDownloadedFiles = files,
-        sVideosL =
-          -- TODO: treat part files
-          fmap
-            ( \i ->
-                if isDownloaded files . videoId . itemVideo $ i
-                  then i {itemProgress = Just 100, itemStatus = Downloaded}
-                  else i
-            )
-            . sVideosL
-            $ s
-      }
+  M.continue $ s {sDownloadedFiles = files, sVideosL = nVideosL files}
   where
-    isDownloaded files vId = any (`match` vId) files
+    mapVi fs i =
+      case (isD i, isDing i) of
+        (True, False) -> i {itemProgress = Just 100, itemStatus = Downloaded}
+        (True, True) -> i
+        _ -> i {itemProgress = Nothing, itemStatus = Available}
+      where
+        isD = isDownloaded fs . videoId . itemVideo
+        isDing = (== Downloading) . itemStatus
+    isDownloaded fs vId = any (`match` vId) fs
     match :: FilePath -> VideoId -> Bool
     match f vId = f =~ (printf "^%s\\..*" vId :: String)
+    nVideosL :: [FilePath] -> L.List ResourceName VideoItem
+    nVideosL fs = fmap (mapVi fs) . sVideosL $ s
 
 dumpLoadedH :: ([Channel], [Video]) -> State -> T.EventM ResourceName (T.Next State)
 dumpLoadedH (chs, vs) s = do
   sendChan VideosLoaded s
-  M.continue
-    ( s
-        { sChannels = chs,
-          sVideos = vs,
-          sStatus = "videos loaded from cache"
-        }
-    )
+  sendChan (Log "videos loaded from cache" Info) s
+  M.continue (s {sChannels = chs, sVideos = nub vs})
 
 channelsLoadedH :: [Channel] -> State -> T.EventM ResourceName (T.Next State)
-channelsLoadedH chs s =
-  M.continue
-    ( s
-        { sChannels = chs,
-          sStatus = "channels loaded: " ++ show (length chs)
-        }
-    )
+channelsLoadedH chs s = do
+  sendChan (Log ("channels loaded: " ++ show (length chs)) Info) s
+  M.continue (s {sChannels = chs})
 
 channelVideosLoadedH :: [Video] -> State -> T.EventM ResourceName (T.Next State)
-channelVideosLoadedH vs s =
-  M.continue
-    ( s
-        { sVideos = nub $ sVideos s ++ vs,
-          sLoadedChannels = sLoadedChannels s + 1,
-          sStatus = "loading videos from channels: " ++ countStr
-        }
-    )
+channelVideosLoadedH vs s = do
+  sendChan (Log ("loading videos from channels: " ++ countStr) Info) s
+  M.continue (s {sVideos = nub $ sVideos s ++ vs, sLoadedChannels = sLoadedChannels s + 1})
   where
     countStr =
       printf
@@ -95,6 +80,7 @@ channelVideosLoadedH vs s =
 
 videosLoadedH :: State -> T.EventM ResourceName (T.Next State)
 videosLoadedH s = do
+  sendChan (Log (printf "loaded %d videos" (length . sVideos $ s)) Info) s
   dumpVs
   w <- videoListWidth s
   sendChan FsChanged s

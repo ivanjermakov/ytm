@@ -9,8 +9,9 @@ import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad (void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Foldable (foldlM)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust, mapMaybe)
 import qualified Graphics.Vty as V
+import Text.Printf (printf)
 import Ytm.Api
 import Ytm.Api.Channel (subscriptions)
 import Ytm.Api.Video (channelVideos)
@@ -24,14 +25,15 @@ import Ytm.Util.Time (daysBefore)
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
 loadVideosH s = do
-  let ns = (s {sStatus = "refreshing videos"})
-      c = fromJust . sCredentials $ s
+  let ns = (s {sChannels = [], sVideos = []})
+      c = fromJust . sCredentials $ ns
+  sendChan (Log "refreshing videos" Info) ns
   async $ do
     chs <- subscriptions c
     dumpChs chs
-    sendChan (ChannelsLoaded chs) s
+    sendChan (ChannelsLoaded chs) ns
     void $ mapConcurrently (chLoaded c) chs
-    sendChan VideosLoaded s
+    sendChan VideosLoaded ns
   M.continue ns
   where
     dumpChs = dump (channelsDumpPath . fromJust . sSettings $ s)
@@ -58,17 +60,14 @@ downloadVideoH s = M.continue =<< (foldlM (\acc vId -> f acc vId) s $ ids)
     pattern = downloadCommandPattern . fromJust . sSettings $ s
     dPath = downloadedPath . fromJust . sSettings $ s
 
--- TODO: selected items deletion is broken
 deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
-deleteDownloadedH s = M.continue =<< (foldlM (\acc vId -> f acc vId) s $ ids)
-  where
-    f ns vId = do
-      ps <- liftIO . activeFilePath $ s
-      when (isJust ps) $ async do
-        sendChan (Log ("video deleted: " ++ vId) Info) ns
-        mapM_ deleteDownloaded $ ps
-      return $ updateVideoL (\i -> i {itemStatus = Available, itemProgress = Nothing}) vId ns
-    ids = map (videoId . itemVideo) . selectedVideoItems $ s
+deleteDownloadedH s = do
+  async do
+    let ps = mapMaybe (`filePath` s) . filter ((== Downloaded) . itemStatus) . selectedVideoItems $ s
+    liftIO . mapM_ deleteDownloaded $ ps
+    when (not . null $ ps) $ sendChan (Log (printf "deleted %d videos" (length ps)) Info) s
+    sendChan FsChanged s
+  M.continue s
 
 enterSelectModeH :: State -> T.EventM ResourceName (T.Next State)
 enterSelectModeH s = do
