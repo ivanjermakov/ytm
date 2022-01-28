@@ -58,7 +58,7 @@ drawListItem _ (i, w) = hBoxGapped 1 [progress, dur, vTitle, chName, pubDate]
       Downloaded -> "D"
       Downloading -> case itemProgress i of
         Nothing -> "D~~"
-        Just p -> printf "%_3.0f%%" p
+        Just p -> printf "%.0f%%" p
 
 drawStatusLine :: State -> Widget ResourceName
 drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str vId, str position]]

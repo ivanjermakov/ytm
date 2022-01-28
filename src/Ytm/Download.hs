@@ -8,10 +8,9 @@ import Text.Read (readMaybe)
 import Text.Regex.PCRE
 import Ytm.Api
 
--- TODO: configurable downloader
 -- TODO: configure sponsorblock
-download :: VideoId -> FilePath -> ((VideoId, Maybe Float, String) -> IO ()) -> IO (Maybe FilePath)
-download vId p hL = do
+download :: VideoId -> FilePath -> String -> ((VideoId, Maybe Float, String) -> IO ()) -> IO (Maybe FilePath)
+download vId path pattern hL = do
   (_, Just stdout, _, _) <- createProcess (shell cmd) {std_out = CreatePipe}
   ms <- hGetContents stdout
   void . mapM (hL . (\s -> (vId, readMaybe (s =~ rx), s))) . drop 1 . lines $ ms
@@ -19,5 +18,5 @@ download vId p hL = do
     [] -> return Nothing
     l : _ -> return $ Just l
   where
-    cmd = printf "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate" vId p
+    cmd = printf pattern vId path
     rx = "(\\d+\\.?\\d*)(?=%)"

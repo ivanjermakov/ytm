@@ -35,7 +35,9 @@ data Settings = Settings
   { fetchDays :: Int,
     videosDumpPath :: FilePath,
     channelsDumpPath :: FilePath,
-    downloadedPath :: FilePath
+    downloadedPath :: FilePath,
+    downloadCommandPattern :: String,
+    playCommandPattern :: String
   }
   deriving (Show)
 

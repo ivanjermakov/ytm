@@ -21,7 +21,9 @@ initState ch =
           { fetchDays = 4,
             videosDumpPath = ".cache/videos.dump",
             channelsDumpPath = ".cache/channels.dump",
-            downloadedPath = "/D/video/"
+            downloadedPath = "/D/video/",
+            downloadCommandPattern = "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate",
+            playCommandPattern = "mpv %s"
           },
       bChan = ch,
       sStatus = "",
@@ -35,7 +37,9 @@ initState ch =
       sLog = []
     }
 
--- TODO: check log
+-- TODO: search
+-- TODO: command mode
+-- TODO: video info modal
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of

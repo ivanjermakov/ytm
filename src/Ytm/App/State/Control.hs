@@ -41,7 +41,7 @@ downloadVideoH s = case mId of
     let s' = updateVideoL (\i -> i {itemStatus = Downloading}) vId s
     sendChan (Log ("downloading video: " ++ vId) Info) s'
     async $ do
-      res <- download vId (downloadedPath . sSettings $ s) logF
+      res <- download vId dPath pattern logF
       case res of
         Nothing -> return ()
         Just vPath -> sendChan (VideoDownloaded vId vPath) s'
@@ -50,6 +50,8 @@ downloadVideoH s = case mId of
   where
     mId = fmap (videoId . itemVideo) . activeVideoItem $ s
     logF (i, p, m) = sendChan (DownloadProgress i p m) s
+    pattern = downloadCommandPattern . sSettings $ s
+    dPath = downloadedPath . sSettings $ s
 
 deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
 deleteDownloadedH s = do
@@ -70,9 +72,11 @@ playH s = do
   case mp of
     Just p -> do
       sendChan (Log ("playing video from " ++ p) Info) s
-      async . play $ p
+      async $ play p pattern
     _ -> return ()
   M.continue s
+  where
+    pattern = playCommandPattern . sSettings $ s
 
 resizeH :: State -> T.EventM ResourceName (T.Next State)
 resizeH s = do
