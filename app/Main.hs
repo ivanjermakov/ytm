@@ -8,6 +8,7 @@ import Control.Monad (void)
 import Data.Yaml
 import System.Environment (getEnv)
 import Ytm.App
+import Ytm.App.Types
 
 main :: IO ()
 main = do
@@ -17,7 +18,8 @@ main = do
     Left err -> do
       error . ("(config error) " ++) . displayException $ err
     Right settings -> do
-      runApp settings
+      s <- runApp settings
+      putStrLn . unlines . map show . sLog $ s
 
 loadEnv :: IO ()
 loadEnv = do

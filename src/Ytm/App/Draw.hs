@@ -8,22 +8,21 @@ import Brick.Widgets.Center (center)
 import Brick.Widgets.Core
 import qualified Brick.Widgets.List as L
 import Data.List (intercalate, intersperse)
-import Data.Maybe (fromMaybe)
 import Text.Printf (printf)
 import Ytm.Api
 import Ytm.App.Attr
 import Ytm.App.State.Core
 import Ytm.App.Types
+import Ytm.Util.Range (inRange)
 import Ytm.Util.Time
 
 draw :: State -> [Widget ResourceName]
 draw s = [vBox [main, hSpacer, hl, sl]]
   where
-    w = sVideosLWidth s
-    header = drawListHeader w
+    header = drawListHeader . sVideosLWidth $ s
     main = if null . sVideos $ s then noVs else ls
     noVs = center $ str "no videos loaded"
-    ls = vBox [header, L.renderList drawListItem True (fmap (,w) . sVideosL $ s)]
+    ls = vBox [header, L.renderListWithIndex drawListItem True (fmap (,s) . sVideosL $ s)]
     hl = drawHelpLine s
     sl = drawStatusLine s
 
@@ -44,9 +43,15 @@ drawListHeader w =
   where
     (ps : dus : ts : ns : ds : _) = toFractions listRatios (w - 4)
 
-drawListItem :: Bool -> (VideoItem, Int) -> Widget ResourceName
-drawListItem _ (i, w) = hBoxGapped 1 [progress, dur, vTitle, chName, pubDate]
+drawListItem :: Int -> Bool -> (VideoItem, State) -> Widget ResourceName
+drawListItem ix _ (i, s) = applySelAttr itemBox
   where
+    applySelAttr = if isSel then withAttr L.listSelectedAttr else id
+    itemBox = hBoxGapped 1 [progress, dur, vTitle, chName, pubDate]
+    isSel = case sSelectMode s of
+      Nothing -> False
+      Just sm -> inRange ix sm
+    w = sVideosLWidth s
     (ps : dus : ts : ns : ds : _) = toFractions listRatios (w - 4)
     v = itemVideo i
     dur = strFixedLeft dus . showTime "%_mm:%0Ss" . videoDuration $ v
@@ -60,19 +65,21 @@ drawListItem _ (i, w) = hBoxGapped 1 [progress, dur, vTitle, chName, pubDate]
         Nothing -> "D~~"
         Just p -> printf "%.0f%%" p
 
+-- TODO: downloading videos stats
 drawStatusLine :: State -> Widget ResourceName
-drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str vId, str position]]
+drawStatusLine s = hBox [str (sStatus s), hSpacer, hBoxGapped 1 [str sMode, str vId, str position]]
   where
     mVi = activeVideoItem s
-    current = (+ 1) . fromMaybe (-1) . L.listSelected . sVideosL $ s
+    current = maybe 0 (+ 1) . L.listSelected . sVideosL $ s
     total = length . sVideosL $ s
     vId = maybe "" (videoId . itemVideo) mVi
     position = printf "%d/%d" current total
+    sMode = show . sSelectMode $s
 
 drawHelpLine :: State -> Widget ResourceName
 drawHelpLine _ = hBox [help, hSpacer]
   where
-    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(r) refresh", "(d) download", "(x) remove"]
+    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(r) refresh", "(d) download", "(x) remove", "(v) select"]
 
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '

@@ -10,12 +10,14 @@ import Control.Concurrent (forkIO)
 import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.List (find)
-import Data.Maybe (fromJust)
+import Data.Maybe (catMaybes, fromJust, mapMaybe)
+import qualified Data.Vector as Vec
 import Text.Printf (printf)
 import Text.Regex.PCRE
 import Ytm.Api
 import Ytm.App.Types
 import Ytm.Util.Persistence
+import Ytm.Util.Range
 
 videoListWidth :: State -> T.EventM ResourceName Int
 videoListWidth s = do
@@ -49,6 +51,21 @@ updateVideoL f vId s =
 
 activeVideoItem :: State -> Maybe VideoItem
 activeVideoItem = fmap snd . L.listSelectedElement . sVideosL
+
+selectedVideoItems :: State -> [VideoItem]
+selectedVideoItems s = case sSelectMode s of
+  Nothing -> catMaybes . (: []) . fmap snd . L.listSelectedElement . sVideosL $ s
+  Just sm -> map snd . filter (\(i, _) -> inRange i sm) . zip [0 :: Int ..] . Vec.toList . L.listElements . sVideosL $ s
+
+selectedFilePaths :: State -> IO [FilePath]
+selectedFilePaths s = return . mapMaybe f $ vis
+  where
+    vis = selectedVideoItems s
+    f vi = do
+      fmap (dPath ++) . findFilename (videoId . itemVideo $ vi) . sDownloadedFiles $ s
+    dPath = downloadedPath . fromJust . sSettings $ s
+    findFilename :: VideoId -> [FilePath] -> Maybe FilePath
+    findFilename vId files = find (=~ (printf "^%s\\..*" vId :: String)) files
 
 activeFilePath :: State -> IO (Maybe FilePath)
 activeFilePath s = case (mId, mSt) of

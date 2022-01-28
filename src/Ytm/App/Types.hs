@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Ytm.App.Types where
 
@@ -7,6 +8,7 @@ import qualified Brick.Widgets.List as L
 import Data.Aeson (FromJSON)
 import GHC.Generics (Generic)
 import Ytm.Api
+import Ytm.Util.Range
 
 data State = State
   { sSettings :: Maybe Settings,
@@ -19,8 +21,20 @@ data State = State
     sVideosL :: L.List ResourceName VideoItem,
     sVideosLWidth :: Int,
     sDownloadedFiles :: [FilePath],
-    sLog :: [(LogLevel, String)]
+    sLog :: [(LogLevel, String)],
+    sSelectMode :: Maybe SelectMode
   }
+
+data SelectMode = SelectMode
+  { selectStart :: Int,
+    selectEnd :: Int
+  }
+  deriving (Show, Read, Eq, Ord)
+
+instance Range SelectMode Int where
+  inRange a (SelectMode start end) = a >= minimum ls && a <= maximum ls
+    where
+      ls = [start, end]
 
 data VideoItem = VideoItem
   { itemVideo :: Video,

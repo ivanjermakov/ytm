@@ -19,7 +19,7 @@ defaultSettings =
       videosDumpPath = ".cache/ytm/videos.dump",
       channelsDumpPath = ".cache/ytm/channels.dump",
       downloadedPath = ".",
-      downloadCommandPattern = "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate",
+      downloadCommandPattern = "yt-dlp '%s' -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' -q --no-warnings --progress --newline --no-simulate",
       playCommandPattern = "mpv %s"
     }
 
@@ -36,7 +36,8 @@ initState ch =
       sVideosL = L.list VideoList (Vec.fromList []) 1,
       sVideosLWidth = 0,
       sDownloadedFiles = [],
-      sLog = []
+      sLog = [],
+      sSelectMode = Nothing
     }
 
 -- TODO: search
@@ -57,15 +58,15 @@ handleEvent s e = case e of
     (Log m l) -> logH m l s
   T.VtyEvent k -> case k of
     V.EvKey (V.KChar 'q') [] -> M.halt s
-    V.EvKey (V.KChar 'i') [] -> listEvent $ L.listMoveBy (-1)
-    V.EvKey (V.KChar 'k') [] -> listEvent $ L.listMoveBy 1
-    V.EvKey (V.KChar 'g') [] -> listEvent L.listMoveToBeginning
-    V.EvKey (V.KChar 'G') [] -> listEvent L.listMoveToEnd
+    V.EvKey (V.KChar 'i') [] -> listEventH (L.listMoveBy (-1)) k s
+    V.EvKey (V.KChar 'k') [] -> listEventH (L.listMoveBy 1) k s
+    V.EvKey (V.KChar 'g') [] -> listEventH L.listMoveToBeginning k s
+    V.EvKey (V.KChar 'G') [] -> listEventH L.listMoveToEnd k s
     V.EvKey (V.KChar 'r') [] -> loadVideosH s
     V.EvKey (V.KChar 'd') [] -> downloadVideoH s
     V.EvKey (V.KChar 'x') [] -> deleteDownloadedH s
+    V.EvKey (V.KChar 'v') [] -> enterSelectModeH s
     V.EvKey V.KEnter [] -> playH s
+    V.EvKey V.KEsc [] -> escH s
     V.EvResize _ _ -> resizeH s
-    _ -> listEvent id
-    where
-      listEvent f = M.continue . (\l -> s {sVideosL = l}) . f =<< L.handleListEvent k (sVideosL s)
+    _ -> listEventH id k s
