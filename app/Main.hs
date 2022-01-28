@@ -1,20 +1,37 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Main where
 
 import qualified Configuration.Dotenv as C
+import Control.Exception (displayException)
 import Control.Monad (void)
+import Data.Yaml
 import System.Environment (getEnv)
-import Text.Printf (printf)
 import Ytm.App
-import Ytm.App.Types
 
 main :: IO ()
 main = do
-  loadConfig
-  s <- runApp
-  _ <- mapM (\(l, m) -> putStrLn $ printf "[%s] %s" (show l) m) . sLog $ s
-  return ()
+  loadEnv
+  es <- loadSettings
+  void case es of
+    Left err -> do
+      error . ("(config error) " ++) . displayException $ err
+    Right settings -> do
+      runApp settings
 
-loadConfig :: IO ()
-loadConfig = do
+loadEnv :: IO ()
+loadEnv = do
+  cp <- configDirPath
+  void $ C.loadFile (C.defaultConfig {C.configPath = [cp ++ ".env"]})
+
+-- TODO pass config path as cmd argument
+-- TODO variable expansion for config paths
+loadSettings :: (FromJSON a) => IO (Either ParseException a)
+loadSettings = do
+  cp <- configDirPath
+  decodeFileEither $ cp ++ "config.yml"
+
+configDirPath :: IO String
+configDirPath = do
   home <- getEnv "HOME"
-  void $ C.loadFile (C.defaultConfig {C.configPath = [home ++ "/.config/ytm/.env"]})
+  return $ home ++ "/.config/ytm/"

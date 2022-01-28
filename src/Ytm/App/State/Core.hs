@@ -10,6 +10,7 @@ import Control.Concurrent (forkIO)
 import Control.Monad (void)
 import Control.Monad.IO.Class
 import Data.List (find)
+import Data.Maybe (fromJust)
 import Text.Printf (printf)
 import Text.Regex.PCRE
 import Ytm.Api
@@ -25,8 +26,8 @@ videoListWidth s = do
 
 loadFromDump :: State -> IO (Maybe ([Channel], [Video]))
 loadFromDump s = do
-  mChs <- loadChannels (channelsDumpPath . sSettings $ s)
-  mVs <- loadVideos (videosDumpPath . sSettings $ s)
+  mChs <- loadChannels (channelsDumpPath . fromJust . sSettings $ s)
+  mVs <- loadVideos (videosDumpPath . fromJust . sSettings $ s)
   case (mChs, mVs) of
     (Just chs, Just vs) -> return $ Just (chs, vs)
     _ -> return Nothing
@@ -52,7 +53,7 @@ activeVideoItem = fmap snd . L.listSelectedElement . sVideosL
 activeFilePath :: State -> IO (Maybe FilePath)
 activeFilePath s = case (mId, mSt) of
   (Just vId, Just Downloaded) -> do
-    let dPath = downloadedPath . sSettings $ s
+    let dPath = downloadedPath . fromJust . sSettings $ s
     return . fmap (dPath ++) . findFilename vId . sDownloadedFiles $ s
   _ -> do
     return Nothing

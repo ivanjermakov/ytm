@@ -12,19 +12,21 @@ import Ytm.App.State.Control
 import Ytm.App.State.Custom
 import Ytm.App.Types
 
+defaultSettings :: Settings
+defaultSettings =
+  Settings
+    { fetchDays = 4,
+      videosDumpPath = ".cache/ytm/videos.dump",
+      channelsDumpPath = ".cache/ytm/channels.dump",
+      downloadedPath = ".",
+      downloadCommandPattern = "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate",
+      playCommandPattern = "mpv %s"
+    }
+
 initState :: BChan CustomEvent -> State
 initState ch =
   State
-    { sSettings =
-        -- TODO: make configurable
-        Settings
-          { fetchDays = 4,
-            videosDumpPath = ".cache/videos.dump",
-            channelsDumpPath = ".cache/channels.dump",
-            downloadedPath = "/D/video/",
-            downloadCommandPattern = "yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate",
-            playCommandPattern = "mpv %s"
-          },
+    { sSettings = Nothing,
       bChan = ch,
       sStatus = "",
       sCredentials = Nothing,
@@ -44,6 +46,7 @@ handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM Resour
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of
     (CredentialsLoaded c) -> credentialsLoadedH c s
+    (SettingsLoaded settings) -> settingsLoadedH settings s
     FsChanged -> fsChangedH s
     DumpLoaded d -> dumpLoadedH d s
     (ChannelsLoaded chs) -> channelsLoadedH chs s

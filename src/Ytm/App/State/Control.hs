@@ -29,9 +29,9 @@ loadVideosH s = do
     sendChan VideosLoaded s
   M.continue ns
   where
-    dumpChs = dump (channelsDumpPath . sSettings $ s)
+    dumpChs = dump (channelsDumpPath . fromJust . sSettings $ s)
     chLoaded c ch = do
-      db <- daysBefore (fetchDays . sSettings $ s)
+      db <- daysBefore (fetchDays . fromJust . sSettings $ s)
       cVs <- channelVideos db ch c
       sendChan (ChannelVideosLoaded cVs) s
 
@@ -50,8 +50,8 @@ downloadVideoH s = case mId of
   where
     mId = fmap (videoId . itemVideo) . activeVideoItem $ s
     logF (i, p, m) = sendChan (DownloadProgress i p m) s
-    pattern = downloadCommandPattern . sSettings $ s
-    dPath = downloadedPath . sSettings $ s
+    pattern = downloadCommandPattern . fromJust . sSettings $ s
+    dPath = downloadedPath . fromJust . sSettings $ s
 
 deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
 deleteDownloadedH s = do
@@ -76,7 +76,7 @@ playH s = do
     _ -> return ()
   M.continue s
   where
-    pattern = playCommandPattern . sSettings $ s
+    pattern = playCommandPattern . fromJust . sSettings $ s
 
 resizeH :: State -> T.EventM ResourceName (T.Next State)
 resizeH s = do

@@ -47,3 +47,26 @@ You need to have `CLIENT_ID` and `CLIENT_SECRET` obtained before.
     --data "code=CODE&client_id=CLIENT_ID&client_secret=CLIENT_SECRET&redirect_uri=urn:ietf:wg:oauth:2.0:oob&grant_type=authorization_code" \
     https://accounts.google.com/o/oauth2/token
     ```
+
+## Configuration
+
+ytm uses two configuration files:
+
+- `.env` - stores API credentials
+- `config.yml` - user config
+
+`config.yml` example:
+
+```
+ytm:
+  fetchDays: 4,
+  videosDumpPath: /home/USER/.cache/videos.dump
+  channelsDumpPath: /home/USER/.cache/channels.dump
+  downloadedPath: /home/USER/Videos/
+  downloadCommandPattern: yt-dlp %s -o '%%(id)s.%%(ext)s' -P '%s' -O '%%(id)s.%%(ext)s' --progress --newline --no-simulate
+  playCommandPattern: mpv %s
+```
+
+By default, ytm will lookup those files in `$HOME/.config/ytm/` directory
+
+Do not modify existing `yt-dlp` flags as it might mess up file download and progress reporting

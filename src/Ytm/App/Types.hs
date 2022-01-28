@@ -1,11 +1,15 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Ytm.App.Types where
 
 import Brick.BChan (BChan)
 import qualified Brick.Widgets.List as L
+import Data.Aeson (FromJSON)
+import GHC.Generics (Generic)
 import Ytm.Api
 
 data State = State
-  { sSettings :: Settings,
+  { sSettings :: Maybe Settings,
     bChan :: BChan CustomEvent,
     sStatus :: String,
     sCredentials :: Maybe Credentials,
@@ -39,10 +43,13 @@ data Settings = Settings
     downloadCommandPattern :: String,
     playCommandPattern :: String
   }
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance FromJSON Settings
 
 data CustomEvent
   = CredentialsLoaded Credentials
+  | SettingsLoaded Settings
   | DumpLoaded ([Channel], [Video])
   | ChannelsLoaded [Channel]
   | ChannelVideosLoaded [Video]

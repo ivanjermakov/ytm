@@ -17,13 +17,13 @@ import Ytm.App.Types
 import Ytm.Util.Time
 
 draw :: State -> [Widget ResourceName]
-draw s = [vBox [header, main, hSpacer, hl, sl]]
+draw s = [vBox [main, hSpacer, hl, sl]]
   where
     w = sVideosLWidth s
     header = drawListHeader w
     main = if null . sVideos $ s then noVs else ls
     noVs = center $ str "no videos loaded"
-    ls = L.renderList drawListItem True (fmap (,w) . sVideosL $ s)
+    ls = vBox [header, L.renderList drawListItem True (fmap (,w) . sVideosL $ s)]
     hl = drawHelpLine s
     sl = drawStatusLine s
 

@@ -1,12 +1,15 @@
 module Ytm.Util.Persistence where
 
-import System.Directory (doesFileExist)
+import System.Directory (createDirectoryIfMissing, doesFileExist)
 import System.IO.Strict
 import Ytm.Api
 import Prelude hiding (readFile)
+import System.FilePath.Posix (takeDirectory)
 
 dump :: (Show a) => FilePath -> a -> IO ()
-dump p = writeFile p . show
+dump p a = do
+  createDirectoryIfMissing True . takeDirectory $ p
+  writeFile p . show $ a
 
 -- TODO: refactor
 loadChannels :: FilePath -> IO (Maybe [Channel])

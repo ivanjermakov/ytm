@@ -22,14 +22,21 @@ import Ytm.Util.Persistence
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
   sendChan (Log "credentials loaded" Info) s
-  async $ do
-    l <- loadFromDump s
-    when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s
   M.continue (s {sCredentials = Just c})
+
+settingsLoadedH :: Settings -> State -> T.EventM ResourceName (T.Next State)
+settingsLoadedH settings s = do
+  sendChan (Log "settings loaded" Info) s'
+  async $ do
+    l <- loadFromDump s'
+    when (isJust l) $ sendChan (DumpLoaded $ fromJust l) s'
+  M.continue s'
+  where
+    s' = s {sSettings = Just settings}
 
 fsChangedH :: State -> T.EventM ResourceName (T.Next State)
 fsChangedH s = do
-  files <- liftIO . listDownloadedFiles . downloadedPath . sSettings $ s
+  files <- liftIO . listDownloadedFiles . downloadedPath . fromJust . sSettings $ s
   M.continue $
     s
       { sDownloadedFiles = files,
@@ -94,7 +101,7 @@ videosLoadedH s = do
   M.continue (s {sVideosL = L.list VideoList (Vec.fromList vItems) 1, sVideosLWidth = w})
   where
     vItems = map (\v -> VideoItem v Nothing Available) . sortOn (O.Down . publishedAt) . sVideos $ s
-    dumpVs = liftIO $ dump (videosDumpPath . sSettings $ s) (sVideos s)
+    dumpVs = liftIO $ dump (videosDumpPath . fromJust . sSettings $ s) (sVideos s)
 
 videoDownloadedH :: VideoId -> FilePath -> State -> T.EventM ResourceName (T.Next State)
 videoDownloadedH vId vPath s = do

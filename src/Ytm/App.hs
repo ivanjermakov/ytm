@@ -6,8 +6,6 @@ module Ytm.App where
 import Brick.BChan (newBChan)
 import qualified Brick.Main as M
 import qualified Brick.Types as T
-import Control.Concurrent (forkIO)
-import Control.Monad (void)
 import qualified Graphics.Vty as V
 import Ytm.Api
 import Ytm.App.Attr (attrMap)
@@ -16,12 +14,15 @@ import Ytm.App.State
 import Ytm.App.State.Core
 import Ytm.App.Types
 
-runApp :: IO State
-runApp = do
+runApp :: Settings -> IO State
+runApp settings = do
   ch <- newBChan 1000
   let s = initState ch
 
-  void . forkIO $ do
+  async $ do
+    sendChan (SettingsLoaded settings) s
+
+  async $ do
     c <- credentials
     sendChan (CredentialsLoaded c) s
 
