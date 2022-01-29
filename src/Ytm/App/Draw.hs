@@ -78,11 +78,19 @@ drawStatusLine s = hBox [str (sStatus s), hSpacer, hBox [padRight (Pad 1) . str 
     vId = maybe "" (videoId . itemVideo) mVi
     position = printf "%d/%d" current total
 
--- TODO: reactive help
 drawHelpLine :: State -> Widget ResourceName
-drawHelpLine _ = hBox [help, hSpacer]
+drawHelpLine s = hBox [help, hSpacer]
   where
-    help = withAttr secondaryTextAttr $ str $ intercalate "   " ["(r) refresh", "(d) download", "(x) remove", "(v) select", "(Enter) play"]
+    help = withAttr secondaryTextAttr $ str $ intercalate "   " hs
+    hs = case sSelectMode s of
+      Nothing -> case activeVideoItem s of
+        Just i -> case itemStatus i of
+          Available -> [r, d, v, p]
+          Downloading -> [r, v]
+          Downloaded -> [r, x, v, p]
+        Nothing -> [r]
+      Just _ -> [r, d, x, v]
+    (r : d : x : v : p : _) = ["(r) refresh", "(d) download", "(x) remove", "(v) select", "(Enter) play"]
 
 hSpacer :: Widget ResourceName
 hSpacer = vLimit 1 $ fill ' '

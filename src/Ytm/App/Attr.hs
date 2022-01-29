@@ -6,6 +6,7 @@ import qualified Brick.AttrMap as A
 import Brick.Util
 import qualified Graphics.Vty as V
 
+-- TODO: themes
 attrMap :: s -> A.AttrMap
 attrMap _ =
   A.attrMap
