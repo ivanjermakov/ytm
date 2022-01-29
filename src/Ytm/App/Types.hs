@@ -69,7 +69,7 @@ data CustomEvent
   | ChannelVideosLoaded [Video]
   | VideosLoaded
   | VideoDownloaded VideoId FilePath
-  | DownloadProgress VideoId (Maybe Progress) String
+  | DownloadProgress VideoId Progress
   | Log String LogLevel
   | FsChanged
   deriving (Show)
@@ -77,4 +77,16 @@ data CustomEvent
 data ResourceName = VideoList
   deriving (Eq, Ord, Show)
 
-type Progress = Float
+data Progress = Progress
+  { status :: VideoStatus,
+    downPercent :: Float,
+    downBytes :: Int,
+    totalBytes :: Int,
+    speed :: Maybe Float,
+    elapsed :: Maybe Float,
+    eta :: Maybe Float
+  }
+  deriving (Show, Read, Eq, Ord)
+
+progressDownloaded :: Progress
+progressDownloaded = Progress Downloaded 100 0 0 Nothing Nothing Nothing

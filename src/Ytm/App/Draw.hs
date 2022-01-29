@@ -28,7 +28,7 @@ draw s = [vBox [main, hSpacer, hl, sl]]
     sl = drawStatusLine s
 
 listRatios :: [Fr]
-listRatios = [F 3, F 8, R 3, R 1, F 12]
+listRatios = [F 4, F 8, R 3, R 1, F 12]
 
 drawListHeader :: Int -> Widget ResourceName
 drawListHeader =
@@ -65,12 +65,17 @@ drawListItem ix isActive (i, s) = applyAttr itemBox
       Downloaded -> "D"
       Downloading -> case itemProgress i of
         Nothing -> "D~~"
-        Just p -> printf "%.0f%%" p
+        Just p -> if downPercent p == 100 then "100%" else printf "%.0f%%" (downPercent p)
 
 -- TODO: downloading videos stats
 -- TODO: network usage indicator
 drawStatusLine :: State -> Widget ResourceName
-drawStatusLine s = hBox [str (sStatus s), hSpacer, hBox [padRight (Pad 1) . str $ vId, str position]]
+drawStatusLine s =
+  hBox
+    [ str (sStatus s),
+      hSpacer,
+      hBox [padRight (Pad 1) . str $ vId, str position]
+    ]
   where
     mVi = activeVideoItem s
     current = maybe 0 (+ 1) . L.listSelected . sVideosL $ s

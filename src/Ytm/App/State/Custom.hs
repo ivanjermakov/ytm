@@ -49,7 +49,7 @@ fsChangedH s = do
   where
     mapVi fs i =
       case (isD i, isDing i) of
-        (True, False) -> i {itemProgress = Just 100, itemStatus = Downloaded}
+        (True, False) -> i {itemProgress = Just progressDownloaded, itemStatus = Downloaded}
         (True, True) -> i
         _ -> i {itemProgress = Nothing, itemStatus = Available}
       where
@@ -101,15 +101,12 @@ videoDownloadedH vId vPath s = do
   sendChan FsChanged s
   M.continue $
     updateVideoL
-      (\i -> i {itemProgress = Just 100, itemStatus = Downloaded})
+      (\i -> i {itemProgress = Just progressDownloaded, itemStatus = Downloaded})
       vId
       s
 
-downloadProgressH :: VideoId -> Maybe Progress -> String -> State -> T.EventM ResourceName (T.Next State)
-downloadProgressH vId mp _ s = M.continue case mp of
-  Nothing -> s
-  Just p -> updateVideoL (\i -> i {itemProgress = Just p}) vId s
+downloadProgressH :: VideoId -> Progress -> State -> T.EventM ResourceName (T.Next State)
+downloadProgressH vId p s = M.continue $ updateVideoL (\i -> i {itemProgress = Just p}) vId s
 
--- TODO: styling
 logH :: String -> LogLevel -> State -> T.EventM ResourceName (T.Next State)
 logH m l s = M.continue $ s {sStatus = m, sLog = sLog s ++ [(l, m)]}

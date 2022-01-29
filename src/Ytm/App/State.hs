@@ -57,7 +57,7 @@ handleEvent s e = case e of
     (ChannelVideosLoaded vs) -> channelVideosLoadedH vs s
     VideosLoaded -> videosLoadedH s
     VideoDownloaded vId vPath -> videoDownloadedH vId vPath s
-    DownloadProgress vId mp m -> downloadProgressH vId mp m s
+    DownloadProgress vId p -> downloadProgressH vId p s
     (Log m l) -> logH m l s
   T.VtyEvent k -> case k of
     V.EvKey (V.KChar 'q') [] -> M.halt s

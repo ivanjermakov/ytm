@@ -26,7 +26,7 @@ import Ytm.Util.Time (daysBefore)
 
 loadVideosH :: State -> T.EventM ResourceName (T.Next State)
 loadVideosH s = do
-  let ns = (s {sChannels = [], sVideos = []})
+  let ns = (s {sChannels = [], sVideos = [], sLoadedChannels = 0})
       c = fromJust . sCredentials $ ns
   sendChan (Log "refreshing videos" Info) ns
   async $ do
@@ -64,7 +64,7 @@ downloadVideoH s =
           Nothing -> return ()
           Just p -> sendChan (VideoDownloaded vid p) ns
       return ns
-    logF s' (i, p, m) = sendChan (DownloadProgress i p m) s'
+    logF s' (i, p) = sendChan (DownloadProgress i p) s'
     pattern = downloadCommandPattern . fromJust . sSettings $ s
     dPath = downloadedPath . fromJust . sSettings $ s
 
