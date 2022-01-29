@@ -46,7 +46,6 @@ initState ch =
 -- TODO: delete part files (cleanup)
 -- TODO: load comments
 -- TODO: mark watched (both local and YT)
--- TODO: remove selection on action (bulk download/delete)
 handleEvent :: State -> T.BrickEvent ResourceName CustomEvent -> T.EventM ResourceName (T.Next State)
 handleEvent s e = case e of
   T.AppEvent cusE -> case cusE of

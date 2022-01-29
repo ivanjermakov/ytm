@@ -53,7 +53,7 @@ downloadVideoH s =
     when (not . null $ vis) do
       sendChan (Log (printf "downloading %d videos" (length vis)) Info) s
     s' <- foldlM (\ns i -> d i ns) s $ vis
-    M.continue s'
+    M.continue s' {sSelectMode = Nothing}
   where
     d i s' = do
       let vid = videoId . itemVideo $ i
@@ -75,7 +75,7 @@ deleteDownloadedH s = do
     liftIO . mapM_ deleteDownloaded $ ps
     when (not . null $ ps) $ sendChan (Log (printf "deleted %d videos" (length ps)) Info) s
     sendChan FsChanged s
-  M.continue s
+  M.continue s {sSelectMode = Nothing}
 
 enterSelectModeH :: State -> T.EventM ResourceName (T.Next State)
 enterSelectModeH s = do
@@ -93,7 +93,7 @@ playH s = do
       sendChan (Log ("playing video from " ++ p) Info) s
       async $ play p pattern
     _ -> return ()
-  M.continue s
+  M.continue s {sSelectMode = Nothing}
   where
     pattern = playCommandPattern . fromJust . sSettings $ s
 
