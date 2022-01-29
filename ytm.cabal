@@ -30,6 +30,7 @@ library
       Ytm.App
       Ytm.App.Attr
       Ytm.App.Draw
+      Ytm.App.Draw.Flex
       Ytm.App.State
       Ytm.App.State.Control
       Ytm.App.State.Core
@@ -110,6 +111,7 @@ test-suite ytm-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Ytm.App.Draw.FlexSpec
       Paths_ytm
   hs-source-dirs:
       test
@@ -125,6 +127,7 @@ test-suite ytm-test
     , dotenv
     , either
     , filepath
+    , hspec
     , http-client
     , lens
     , lens-aeson

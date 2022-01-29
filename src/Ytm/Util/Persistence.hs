@@ -11,7 +11,6 @@ dump p a = do
   createDirectoryIfMissing True . takeDirectory $ p
   writeFile p . show $ a
 
--- TODO: refactor
 loadChannels :: FilePath -> IO (Maybe [Channel])
 loadChannels p = do
   exist <- doesFileExist p
