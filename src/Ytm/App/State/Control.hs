@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE TupleSections #-}
 
 module Ytm.App.State.Control where
 
@@ -42,21 +43,28 @@ loadVideosH s = do
       cVs <- channelVideos db ch c
       sendChan (ChannelVideosLoaded cVs) s
 
--- TODO: don't download videos that are being downloaded
 downloadVideoH :: State -> T.EventM ResourceName (T.Next State)
-downloadVideoH s = M.continue =<< (foldlM (\acc vId -> f acc vId) s $ ids)
+downloadVideoH s =
+  do
+    let vis =
+          filter ((== Available) . itemStatus)
+            . selectedVideoItems
+            $ s
+    when (not . null $ vis) do
+      sendChan (Log (printf "downloading %d videos" (length vis)) Info) s
+    s' <- foldlM (\ns i -> d i ns) s $ vis
+    M.continue s'
   where
-    f ns vId = do
-      let s' = updateVideoL (\i -> i {itemStatus = Downloading}) vId ns
-      async $ do
-        sendChan (Log ("downloading video: " ++ vId) Info) s'
-        res <- download vId dPath pattern logF
-        case res of
+    d i s' = do
+      let vid = videoId . itemVideo $ i
+          ns = updateVideoL (\vi -> vi {itemStatus = Downloading}) vid s'
+      async do
+        mp <- download vid dPath pattern $ logF ns
+        case mp of
           Nothing -> return ()
-          Just vPath -> sendChan (VideoDownloaded vId vPath) s'
-      return s'
-    ids = fmap (videoId . itemVideo) . selectedVideoItems $ s
-    logF (i, p, m) = sendChan (DownloadProgress i p m) s
+          Just p -> sendChan (VideoDownloaded vid p) ns
+      return ns
+    logF s' (i, p, m) = sendChan (DownloadProgress i p m) s'
     pattern = downloadCommandPattern . fromJust . sSettings $ s
     dPath = downloadedPath . fromJust . sSettings $ s
 

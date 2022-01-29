@@ -44,6 +44,7 @@ type ChannelId = String
 
 type PlaylistId = String
 
+--TODO: exception handling
 credentials :: IO Credentials
 credentials = do
   k <- getEnv "API_KEY"
@@ -51,14 +52,14 @@ credentials = do
   cs <- getEnv "CLIENT_SECRET"
   rt <- getEnv "REFRESH_TOKEN"
   let url = "https://www.googleapis.com/oauth2/v4/token"
-  r <-
-    post
-      url
-      [ "client_id" := cId,
-        "client_secret" := cs,
-        "refresh_token" := rt,
-        "grant_type" := ("refresh_token" :: String)
-      ]
+      body =
+        [ "client_id" := cId,
+          "client_secret" := cs,
+          "refresh_token" := rt,
+          "grant_type" := ("refresh_token" :: String)
+        ]
+  print body
+  r <- post url body
   let accT = T.unpack $ r ^. responseBody . key "access_token" . _String
   return $ Credentials k cId accT rt
 

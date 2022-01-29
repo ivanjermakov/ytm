@@ -21,16 +21,22 @@ import Ytm.Util.Persistence
 
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
-  M.continue (s {sCredentials = Just c})
-
-settingsLoadedH :: Settings -> State -> T.EventM ResourceName (T.Next State)
-settingsLoadedH settings s = do
-  sendChan (Log "settings loaded" Info) s'
+  sendChan (Log "credentials loaded" Info) s'
   async $ do
     l <- loadFromDump s'
     when (isJust l) do
       sendChan (DumpLoaded $ fromJust l) s'
       sendChan FsChanged s'
+  M.continue (s {sCredentials = Just c})
+  where
+    s' = s {sCredentials = Just c}
+
+settingsLoadedH :: Settings -> State -> T.EventM ResourceName (T.Next State)
+settingsLoadedH settings s = do
+  sendChan (Log "settings loaded" Info) s'
+  async $ do
+    c <- credentials
+    sendChan (CredentialsLoaded c) s'
   M.continue s'
   where
     s' = s {sSettings = Just settings}

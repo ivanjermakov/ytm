@@ -22,10 +22,6 @@ runApp settings = do
   async $ do
     sendChan (SettingsLoaded settings) s
 
-  async $ do
-    c <- credentials
-    sendChan (CredentialsLoaded c) s
-
   c <- V.userConfig
   initialVty <- V.mkVty c
   M.customMain initialVty (V.mkVty V.defaultConfig) (Just ch) app s
