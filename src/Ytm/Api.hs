@@ -44,7 +44,7 @@ type ChannelId = String
 
 type PlaylistId = String
 
---TODO: exception handling
+-- TODO: exception handling
 credentials :: IO Credentials
 credentials = do
   k <- getEnv "API_KEY"
@@ -58,7 +58,6 @@ credentials = do
           "refresh_token" := rt,
           "grant_type" := ("refresh_token" :: String)
         ]
-  print body
   r <- post url body
   let accT = T.unpack $ r ^. responseBody . key "access_token" . _String
   return $ Credentials k cId accT rt
