@@ -7,8 +7,10 @@ import qualified Brick.Main as M
 import qualified Brick.Types as T
 import qualified Brick.Widgets.List as L
 import Control.Concurrent.Async (mapConcurrently)
+import qualified Control.Exception as E
 import Control.Monad (void, when)
 import Control.Monad.IO.Class (liftIO)
+import Data.Either (fromRight)
 import Data.Foldable (foldlM)
 import Data.Maybe (fromJust, mapMaybe)
 import qualified Graphics.Vty as V
@@ -40,7 +42,7 @@ loadVideosH s = do
     dumpChs = dump (channelsDumpPath . fromJust . sSettings $ s)
     chLoaded c ch = do
       db <- daysBefore (fetchDays . fromJust . sSettings $ s)
-      cVs <- channelVideos db ch c
+      cVs <- fromRight [] <$> (E.try (channelVideos db ch c) :: IO (Either E.SomeException [Video]))
       sendChan (ChannelVideosLoaded cVs) s
 
 downloadVideoH :: State -> T.EventM ResourceName (T.Next State)

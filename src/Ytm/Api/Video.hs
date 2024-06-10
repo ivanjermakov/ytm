@@ -3,9 +3,13 @@
 
 module Ytm.Api.Video where
 
+import Control.Exception (catch)
+import qualified Control.Exception as E
+import Control.Exception.Base
 import Control.Lens
 import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Internal as BS
+import Data.Either (fromRight)
 import Data.List (sortOn, zipWith6)
 import Data.Maybe (isJust, mapMaybe)
 import qualified Data.Ord as O
@@ -19,7 +23,10 @@ import qualified Ytm.Api.Channel as C
 subscriptionsVideos :: UTCTime -> Credentials -> IO [Video]
 subscriptionsVideos publishedAfter c = do
   chs <- C.subscriptions c
-  sortOn (O.Down . publishedAt) . concat <$> mapM (\ch -> channelVideos publishedAfter ch c) chs
+  sortOn (O.Down . publishedAt) . concat <$> mapM getVideos chs
+  where
+    getVideos ch = do
+      fromRight [] <$> (E.try (channelVideos publishedAfter ch c) :: IO (Either E.SomeException [Video]))
 
 channelVideos :: UTCTime -> Channel -> Credentials -> IO [Video]
 channelVideos = channelVideos' Nothing []
