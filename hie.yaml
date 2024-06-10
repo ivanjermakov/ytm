@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "ytm:lib"
+
+    - path: "./app/Main.hs"
+      component: "ytm:exe:ytm"
+
+    - path: "./app/Paths_ytm.hs"
+      component: "ytm:exe:ytm"
+
+    - path: "./test"
+      component: "ytm:test:ytm-test"

@@ -23,7 +23,7 @@ dependencies:
 - containers
 - vector
 - text
-- brick
+- brick < 1
 - vty
 - dotenv
 - wreq

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -51,7 +51,7 @@ library
       aeson
     , async
     , base >=4.7 && <5
-    , brick
+    , brick <1
     , bytestring
     , containers
     , directory
@@ -84,7 +84,7 @@ executable ytm
       aeson
     , async
     , base >=4.7 && <5
-    , brick
+    , brick <1
     , bytestring
     , containers
     , directory
@@ -120,7 +120,7 @@ test-suite ytm-test
       aeson
     , async
     , base >=4.7 && <5
-    , brick
+    , brick <1
     , bytestring
     , containers
     , directory
