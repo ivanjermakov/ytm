@@ -57,7 +57,7 @@ drawListItem ix isActive (i, s) = applyAttr itemBox
       Nothing -> False
       Just sm -> inRange ix sm
     v = itemVideo i
-    dur = showTime "%_mm:%0Ss" . videoDuration $ v
+    dur = showTime "%02mm:%0Ss" . videoDuration $ v
     chName = channelName $ channel v
     pubDate = showTime "%R %b %d" . publishedAt $ v
     progress = case itemStatus i of

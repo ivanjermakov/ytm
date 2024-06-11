@@ -6,9 +6,10 @@ module Ytm.App.State.Control where
 import qualified Brick.Main as M
 import qualified Brick.Types as T
 import qualified Brick.Widgets.List as L
-import Control.Concurrent.Async (mapConcurrently)
+import Control.Concurrent (forkIO)
+import Control.Concurrent.Async (async, mapConcurrently, mapConcurrently_)
 import qualified Control.Exception as E
-import Control.Monad (void, when)
+import Control.Monad (unless, void, when)
 import Control.Monad.IO.Class (liftIO)
 import Data.Either (fromRight)
 import Data.Foldable (foldlM)
@@ -31,16 +32,16 @@ loadVideosH s = do
   let ns = (s {sChannels = [], sVideos = [], sLoadedChannels = 0})
       c = fromJust . sCredentials $ ns
   sendChan (Log "refreshing videos" Info) ns
-  async $ do
+  void . liftIO . forkIO $ do
     chs <- subscriptions c
     dumpChs chs
     sendChan (ChannelsLoaded chs) ns
-    void $ mapConcurrently (chLoaded c) chs
+    mapConcurrently_ (loadChVideos c) chs
     sendChan VideosLoaded ns
   M.continue ns
   where
     dumpChs = dump (channelsDumpPath . fromJust . sSettings $ s)
-    chLoaded c ch = do
+    loadChVideos c ch = do
       db <- daysBefore (fetchDays . fromJust . sSettings $ s)
       cVs <- fromRight [] <$> (E.try (channelVideos db ch c) :: IO (Either E.SomeException [Video]))
       sendChan (ChannelVideosLoaded cVs) s
@@ -52,15 +53,15 @@ downloadVideoH s =
           filter ((== Available) . itemStatus)
             . selectedVideoItems
             $ s
-    when (not . null $ vis) do
+    unless (null vis) do
       sendChan (Log (printf "downloading %d videos" (length vis)) Info) s
-    s' <- foldlM (\ns i -> d i ns) s $ vis
+    s' <- foldlM d s vis
     M.continue s' {sSelectMode = Nothing}
   where
-    d i s' = do
+    d s' i = do
       let vid = videoId . itemVideo $ i
           ns = updateVideoL (\vi -> vi {itemStatus = Downloading}) vid s'
-      async do
+      liftIO $ async do
         mp <- download vid dPath pattern $ logF ns
         case mp of
           Nothing -> return ()
@@ -72,10 +73,10 @@ downloadVideoH s =
 
 deleteDownloadedH :: State -> T.EventM ResourceName (T.Next State)
 deleteDownloadedH s = do
-  async do
+  liftIO $ async do
     let ps = mapMaybe (`filePath` s) . filter ((== Downloaded) . itemStatus) . selectedVideoItems $ s
-    liftIO . mapM_ deleteDownloaded $ ps
-    when (not . null $ ps) $ sendChan (Log (printf "deleted %d videos" (length ps)) Info) s
+    liftIO . mapConcurrently_ deleteDownloaded $ ps
+    unless (null ps) $ sendChan (Log (printf "deleted %d videos" (length ps)) Info) s
     sendChan FsChanged s
   M.continue s {sSelectMode = Nothing}
 
@@ -93,7 +94,7 @@ playH s = do
   case mp of
     Just p -> do
       sendChan (Log ("playing video from " ++ p) Info) s
-      async $ play p pattern
+      void . liftIO . forkIO $ play p pattern
     _ -> return ()
   M.continue s {sSelectMode = Nothing}
   where

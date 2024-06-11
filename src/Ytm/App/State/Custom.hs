@@ -5,6 +5,7 @@ module Ytm.App.State.Custom where
 import qualified Brick.Main as M
 import qualified Brick.Types as T
 import qualified Brick.Widgets.List as L
+import Control.Concurrent.Async (async)
 import Control.Monad (when)
 import Control.Monad.IO.Class
 import Data.List (nub, sortOn)
@@ -22,7 +23,7 @@ import Ytm.Util.Persistence
 credentialsLoadedH :: Credentials -> State -> T.EventM ResourceName (T.Next State)
 credentialsLoadedH c s = do
   sendChan (Log "credentials loaded" Info) s'
-  async $ do
+  liftIO . async $ do
     l <- loadFromDump s'
     when (isJust l) do
       sendChan (DumpLoaded $ fromJust l) s'
@@ -34,7 +35,7 @@ credentialsLoadedH c s = do
 settingsLoadedH :: Settings -> State -> T.EventM ResourceName (T.Next State)
 settingsLoadedH settings s = do
   sendChan (Log "settings loaded" Info) s'
-  async $ do
+  liftIO . async $ do
     c <- credentials
     sendChan (CredentialsLoaded c) s'
   M.continue s'

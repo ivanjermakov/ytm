@@ -3,6 +3,7 @@
 
 module Ytm.Api.Video where
 
+import Control.Concurrent.Async (mapConcurrently)
 import Control.Exception (catch)
 import qualified Control.Exception as E
 import Control.Exception.Base
@@ -23,7 +24,7 @@ import qualified Ytm.Api.Channel as C
 subscriptionsVideos :: UTCTime -> Credentials -> IO [Video]
 subscriptionsVideos publishedAfter c = do
   chs <- C.subscriptions c
-  sortOn (O.Down . publishedAt) . concat <$> mapM getVideos chs
+  sortOn (O.Down . publishedAt) . concat <$> mapConcurrently getVideos chs
   where
     getVideos ch = do
       fromRight [] <$> (E.try (channelVideos publishedAfter ch c) :: IO (Either E.SomeException [Video]))

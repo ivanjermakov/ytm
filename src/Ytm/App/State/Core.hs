@@ -37,9 +37,6 @@ loadFromDump s = do
 sendChan :: (MonadIO m) => CustomEvent -> State -> m ()
 sendChan e s = liftIO $ writeBChan (bChan s) e
 
-async :: (MonadIO m) => IO () -> m ()
-async = void . liftIO . forkIO
-
 updateVideoL :: (VideoItem -> VideoItem) -> VideoId -> State -> State
 updateVideoL f vId s =
   s

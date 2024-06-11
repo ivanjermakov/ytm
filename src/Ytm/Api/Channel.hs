@@ -2,6 +2,7 @@
 
 module Ytm.Api.Channel where
 
+import Control.Concurrent.Async (mapConcurrently)
 import Control.Lens
 import Data.Aeson.Lens
 import qualified Data.List.Split as S
@@ -13,7 +14,7 @@ import Ytm.Api
 subscriptions :: Credentials -> IO [Channel]
 subscriptions c = do
   ss <- channelIds' Nothing c
-  fmap concat . mapM (`channelsFromIds` c) . S.chunksOf 50 $ ss
+  fmap concat . mapConcurrently (`channelsFromIds` c) . S.chunksOf 50 $ ss
   where
     channelIds' npt c' = do
       (l, mn) <- channelIdsPage npt c'

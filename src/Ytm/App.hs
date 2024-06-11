@@ -1,11 +1,12 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Ytm.App where
 
 import Brick.BChan (newBChan)
 import qualified Brick.Main as M
 import qualified Brick.Types as T
+import Control.Concurrent.Async (async)
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Graphics.Vty as V
 import Ytm.Api
 import Ytm.App.Attr (attrMap)
@@ -19,7 +20,7 @@ runApp settings = do
   ch <- newBChan 1000
   let s = initState ch
 
-  async $ do
+  liftIO . async $ do
     sendChan (SettingsLoaded settings) s
 
   c <- V.userConfig
